@@ -12,7 +12,7 @@ from scipy.io import loadmat
 
 logger = getLogger(__name__)
 
-ROOT_DIR = join(abspath(dirname(__file__)), pardir, pardir)
+ROOT_DIR = join(abspath(dirname(__file__)), pardir)
 RAW_DATA_DIR = join(ROOT_DIR, 'Raw-Data')
 PROCESSED_DATA_DIR = join(ROOT_DIR, 'Processed-Data')
 
