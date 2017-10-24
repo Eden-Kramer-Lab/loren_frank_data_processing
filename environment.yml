@@ -15,3 +15,5 @@ dependencies:
 - jupyter
 - numpydoc
 - sphinx
+- pip:
+  - twine
