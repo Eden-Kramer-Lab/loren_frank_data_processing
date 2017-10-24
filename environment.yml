@@ -1,0 +1,17 @@
+name: loren_frank_data_processing
+channels:
+- conda-forge
+- defaults
+dependencies:
+- python=3.5
+- numpy
+- pandas
+- xarray
+- scipy
+- pytest
+- pytest-cov
+- coveralls
+- setuptools
+- jupyter
+- numpydoc
+- sphinx
