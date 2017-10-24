@@ -4,7 +4,7 @@ from unittest.mock import patch
 import numpy as np
 
 import pytest
-from src.data_processing.core import get_data_filename, get_epochs
+from loren_frank_data_processing.core import get_data_filename, get_epochs
 
 # Create a fake 'tasks' data set to test
 mock_data_struct = np.zeros(5, dtype={'names': ['type', 'environment'],
@@ -36,7 +36,7 @@ def test_data_file_name_returns_correct_file(day, expected_name):
     assert expected_name in file_name
 
 
-@patch('src.data_processing.core.loadmat', return_value=MOCK_CELL_ARRAY)
+@patch('loren_frank_data_processing.core.loadmat', return_value=MOCK_CELL_ARRAY)
 def test_get_epochs(mock_loadmat):
     Animal = namedtuple('Animal', {'directory', 'short_name'})
     animal = Animal(directory='test_dir', short_name='Test')

@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from src.data_processing.utilities import find_closest_ind
+from loren_frank_data_processing.utilities import find_closest_ind
 
 
 @pytest.mark.parametrize('search_array, target, expected_index', [
