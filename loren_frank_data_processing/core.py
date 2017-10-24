@@ -3,7 +3,7 @@
 '''
 
 from logging import getLogger
-from os.path import abspath, dirname, join, pardir
+from os.path import join
 from sys import exit
 
 import numpy as np
@@ -11,10 +11,6 @@ import pandas as pd
 from scipy.io import loadmat
 
 logger = getLogger(__name__)
-
-ROOT_DIR = join(abspath(dirname(__file__)), pardir)
-RAW_DATA_DIR = join(ROOT_DIR, 'Raw-Data')
-PROCESSED_DATA_DIR = join(ROOT_DIR, 'Processed-Data')
 
 
 def get_data_filename(animal, day, file_type):
@@ -38,11 +34,10 @@ def get_data_filename(animal, day, file_type):
 
     '''
     filename = '{animal.short_name}{file_type}{day:02d}.mat'.format(
-        data_dir=RAW_DATA_DIR,
         animal=animal,
         file_type=file_type,
         day=day)
-    return join(RAW_DATA_DIR, animal.directory, filename)
+    return join(animal.directory, filename)
 
 
 def get_epochs(animal, day):

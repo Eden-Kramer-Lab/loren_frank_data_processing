@@ -9,22 +9,20 @@ import numpy as np
 import pandas as pd
 
 
-def copy_animal(animal, src_directory, target_directory):
+def copy_animal(animal, src_directory):
     '''Copies essential data files and renames multiunit files.
 
     Parameters
     ----------
     animal : namedtuple
-        First element is the directory where the animal's data is located.
-        The second element is the animal shortened name.
+        First element is the target directory where the animal's data
+        should be located. The second element is the animal shortened name.
     src_directory : str
-    target_directory : str
 
     '''
     processed_data_dir = join(src_directory, animal.short_name)
-    target_data_dir = join(target_directory, animal.directory)
     try:
-        makedirs(target_data_dir)
+        makedirs(animal.directory)
     except FileExistsError:
         pass
 
@@ -35,7 +33,7 @@ def copy_animal(animal, src_directory, target_directory):
         animal=animal, file_type=file_type))
         for file_type in FILE_TYPES]
     for old_path in chain.from_iterable(data_files):
-        new_path = join(target_data_dir, old_path.split('/')[-1])
+        new_path = join(animal.directory, old_path.split('/')[-1])
 
         print('Copying {old_path}\nto \n{new_path}\n'.format(
             old_path=old_path,
@@ -44,7 +42,7 @@ def copy_animal(animal, src_directory, target_directory):
         copyfile(old_path, new_path)
 
     src_lfp_data_dir = join(processed_data_dir, 'EEG')
-    target_lfp_data_dir = join(target_data_dir, 'EEG')
+    target_lfp_data_dir = join(animal.directory, 'EEG')
     try:
         makedirs(target_lfp_data_dir)
     except FileExistsError:

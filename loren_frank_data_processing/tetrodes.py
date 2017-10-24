@@ -3,7 +3,7 @@ from os.path import join
 import pandas as pd
 from scipy.io import loadmat
 
-from .core import RAW_DATA_DIR, _convert_to_dict, reconstruct_time
+from .core import _convert_to_dict, reconstruct_time
 
 
 def get_tetrode_info_path(animal):
@@ -23,7 +23,7 @@ def get_tetrode_info_path(animal):
 
     '''
     filename = '{animal.short_name}tetinfo.mat'.format(animal=animal)
-    return join(RAW_DATA_DIR, animal.directory, filename)
+    return join(animal.directory, filename)
 
 
 def get_LFP_dataframe(tetrode_key, animals):
@@ -107,11 +107,9 @@ def get_LFP_filename(tetrode_key, animals):
     animal, day, epoch, tetrode_number = tetrode_key
     filename = ('{animal.short_name}eeg{day:02d}-{epoch}-'
                 '{tetrode_number:02d}.mat').format(
-                    data_dir=RAW_DATA_DIR, animal=animals[animal],
-                    day=day, epoch=epoch, tetrode_number=tetrode_number
-    )
-    return join(
-        RAW_DATA_DIR, animals[animal].directory, 'EEG', filename)
+                    animal=animals[animal], day=day, epoch=epoch,
+                    tetrode_number=tetrode_number)
+    return join(animals[animal].directory, 'EEG', filename)
 
 
 def _get_tetrode_id(dataframe):

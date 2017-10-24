@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 from scipy.io import loadmat
 
-from .core import RAW_DATA_DIR
 from .tetrodes import get_trial_time
 
 
@@ -63,13 +62,11 @@ def get_multiunit_filename(tetrode_key, animals):
     animal, day, _, tetrode_number = tetrode_key
     filename = ('{animal.short_name}marks{day:02d}-'
                 '{tetrode_number:02d}.mat').format(
-        data_dir=RAW_DATA_DIR,
         animal=animals[animal],
         day=day,
         tetrode_number=tetrode_number
     )
-    return join(
-        RAW_DATA_DIR, animals[animal].directory, 'EEG', filename)
+    return join(animals[animal].directory, 'EEG', filename)
 
 
 def get_multiunit_indicator_dataframe(tetrode_key, animals,

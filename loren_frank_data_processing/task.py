@@ -5,8 +5,6 @@ import numpy as np
 import pandas as pd
 from scipy.io import loadmat
 
-from .core import RAW_DATA_DIR
-
 
 def load_task(file_name, animal):
     '''Loads task information for a specific day and converts it to a pandas
@@ -53,7 +51,7 @@ def get_task(animal):
     task_information : pandas.DataFrame
 
     '''
-    task_files = glob(join(RAW_DATA_DIR, animal.directory, '*task*.mat'))
+    task_files = glob(join(animal.directory, '*task*.mat'))
     return pd.concat(load_task(task_file, animal)
                      for task_file in task_files)
 

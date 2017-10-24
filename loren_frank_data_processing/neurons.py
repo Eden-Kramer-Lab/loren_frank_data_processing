@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from scipy.io import loadmat
 
-from .core import RAW_DATA_DIR, _convert_to_dict, get_data_filename, logger
+from .core import _convert_to_dict, get_data_filename, logger
 from .tetrodes import get_trial_time
 
 
@@ -158,7 +158,7 @@ def get_neuron_info_path(animal):
 
     '''
     filename = '{animal.short_name}cellinfo.mat'.format(animal=animal)
-    return join(RAW_DATA_DIR, animal.directory, filename)
+    return join(animal.directory, filename)
 
 
 def _get_neuron_id(dataframe):

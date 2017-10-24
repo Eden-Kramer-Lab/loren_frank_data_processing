@@ -7,22 +7,22 @@ from xarray.backends.api import (_CONCAT_DIM_DEFAULT, _default_lock,
                                  _MultiFileCloser, auto_combine, basestring,
                                  open_dataset)
 
-from .core import PROCESSED_DATA_DIR
 
-
-def get_analysis_file_path(animal, day, epoch):
+def get_analysis_file_path(processed_data_dir, animal, day, epoch):
     '''File path for analysis file.
     '''
     filename = '{animal}_{day:02d}_{epoch:02d}.nc'.format(
         animal=animal, day=day, epoch=epoch)
-    return join(PROCESSED_DATA_DIR, filename)
+    return join(processed_data_dir, filename)
 
 
-def save_xarray(epoch_key, dataset, group=''):
+def save_xarray(processed_data_dir, epoch_key, dataset, group=''):
     '''Saves xarray data to file corresponding to epoch key
 
     Parameters
     ----------
+    processed_data_dir : str
+        Path to processed data directory
     epoch_key : tuple
         (Animal, day, epoch)
     dataset : xarray Dataset or DataArray
@@ -31,7 +31,7 @@ def save_xarray(epoch_key, dataset, group=''):
         HDF5 group name
 
     '''
-    path = get_analysis_file_path(*epoch_key)
+    path = get_analysis_file_path(processed_data_dir, *epoch_key)
     write_mode = 'a' if isfile(path) else 'w'
     dataset.to_netcdf(path=path, group=group, mode=write_mode)
 
@@ -149,11 +149,11 @@ def open_mfdataset(paths, chunks=None, concat_dim=_CONCAT_DIM_DEFAULT,
     return combined
 
 
-def read_analysis_files(epoch_keys, **kwargs):
+def read_analysis_files(processed_data_dir, epoch_keys, **kwargs):
     '''Reads in analysis files and concatenate them.
     '''
     epoch_keys.name = 'recording_session'
-    file_names = [get_analysis_file_path(*epoch_key)
+    file_names = [get_analysis_file_path(processed_data_dir, *epoch_key)
                   for epoch_key in epoch_keys]
     return open_mfdataset(
         file_names, concat_dim=epoch_keys, **kwargs)
