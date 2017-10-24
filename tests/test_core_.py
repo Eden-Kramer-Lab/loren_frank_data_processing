@@ -29,7 +29,7 @@ MOCK_CELL_ARRAY = {'task': np.array([[
 ])
 def test_data_file_name_returns_correct_file(day, expected_name):
     Animal = namedtuple('Animal', {'directory', 'short_name'})
-    animal = Animal(directory='test_dir', short_name='Test')
+    animal = Animal(directory='/Raw-Data/test_dir', short_name='Test')
     file_type = 'dummy'
 
     file_name = get_data_filename(animal, day, file_type)
@@ -39,7 +39,7 @@ def test_data_file_name_returns_correct_file(day, expected_name):
 @patch('loren_frank_data_processing.core.loadmat', return_value=MOCK_CELL_ARRAY)
 def test_get_epochs(mock_loadmat):
     Animal = namedtuple('Animal', {'directory', 'short_name'})
-    animal = Animal(directory='test_dir', short_name='Test')
+    animal = Animal(directory='/Raw-Data/test_dir', short_name='Test')
     day = 2
     expected_length = 5
 
