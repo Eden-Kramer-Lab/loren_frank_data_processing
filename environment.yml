@@ -3,12 +3,12 @@ channels:
 - conda-forge
 - defaults
 dependencies:
-- python=3.5
-- numpy
-- pandas
+- "python >= 3.5"
+- "numpy >= 1.11"
+- "pandas >= 0.18.0"
 - xarray
 - scipy
-- pytest
+- "pytest >= 2.7.1"
 - pytest-cov
 - coveralls
 - setuptools
