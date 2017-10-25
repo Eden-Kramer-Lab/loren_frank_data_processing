@@ -28,6 +28,7 @@ conda install -c edeno loren_frank_data_processing
 - scipy
 - pandas
 - xarray (only if using features from the saving module)
+- netcdf4 (only if using features from the saving module)
 
 See [environment.yml](environment.yml) for the most current list of dependencies.
 
