@@ -1,4 +1,6 @@
 # loren_frank_data_processing
+![](https://travis-ci.org/Eden-Kramer-Lab/loren_frank_data_processing.svg?branch=master)
+
 The `loren_frank_data_processing` package imports Matlab data processed by [Loren Frank's lab](http://www.cin.ucsf.edu/HTML/Loren_Frank.html) into a friendly python format using [pandas](https://pandas.pydata.org/pandas-docs/stable/index.html).
 
 In order to use, the data must follow the format proscribed in this [wiki](https://github.com/Eden-Kramer-Lab/Loren-Frank-Data-Format--Description/wiki).
