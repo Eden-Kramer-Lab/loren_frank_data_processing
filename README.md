@@ -1,5 +1,5 @@
 # loren_frank_data_processing
-![](https://travis-ci.org/Eden-Kramer-Lab/loren_frank_data_processing.svg?branch=master)[![Coverage Status](https://coveralls.io/repos/github/Eden-Kramer-Lab/ripple_detection/badge.svg?branch=master)](https://coveralls.io/github/Eden-Kramer-Lab/ripple_detection?branch=master)
+![](https://travis-ci.org/Eden-Kramer-Lab/loren_frank_data_processing.svg?branch=master)[![Coverage Status](https://coveralls.io/repos/github/Eden-Kramer-Lab/loren_frank_data_processing/badge.svg?branch=master)](https://coveralls.io/github/Eden-Kramer-Lab/loren_frank_data_processing?branch=master)
 
 The `loren_frank_data_processing` package imports Matlab data processed by [Loren Frank's lab](http://www.cin.ucsf.edu/HTML/Loren_Frank.html) into a friendly python format using [pandas](https://pandas.pydata.org/pandas-docs/stable/index.html).
 
