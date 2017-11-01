@@ -3,10 +3,11 @@ channels:
 - conda-forge
 - defaults
 dependencies:
-- "python >= 3.5"
+- "python >= 3.4"
 - "numpy >= 1.11"
 - "pandas >= 0.18.0"
 - xarray
+- dask
 - scipy
 - netcdf4
 - "pytest >= 2.7.1"
