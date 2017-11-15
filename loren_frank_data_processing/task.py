@@ -33,8 +33,27 @@ def load_task(file_name, animal):
     return pd.DataFrame(
         [{name: epoch[name].item().squeeze()
           for name in epoch.dtype.names
-          if name in ['environment', 'exposure', 'type']}
-         for epoch in epochs]).set_index(index)
+          if name in ['environment', 'type']}
+         for epoch in epochs]).set_index(index).assign(
+            environment=lambda df: df.environment.astype(str),
+            type=lambda df: df.type.astype(str))
+
+
+def compute_exposure(epoch_info):
+    exposure = (epoch_info
+                .groupby('animal').environment
+                .apply(lambda s: pd.get_dummies(s).cumsum())
+                .stack()
+                .reset_index()
+                .rename(columns={'level_3': 'environment', 0: 'exposure'})
+                .set_index(['animal', 'day', 'epoch', 'environment']))
+
+    epoch_keys = epoch_info.set_index('environment', append=True).index
+    new_df = (epoch_info.drop('environment', axis=1)
+              .join(exposure.loc[epoch_keys].reset_index('environment')))
+    new_df['exposure'] = new_df.exposure.where(
+        ~epoch_info.type.isin(['sleep', 'rest', 'nan']))
+    return new_df
 
 
 def get_task(animal):
@@ -72,6 +91,6 @@ def make_epochs_dataframe(animals):
     epoch_information : pandas.DataFrame
 
     '''
-    return (
+    return compute_exposure(
         pd.concat([get_task(animal) for animal in animals.values()])
         .sort_index())
