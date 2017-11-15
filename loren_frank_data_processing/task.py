@@ -39,21 +39,17 @@ def load_task(file_name, animal):
             type=lambda df: df.type.astype(str))
 
 
-def compute_exposure(epoch_info):
-    exposure = (epoch_info
-                .groupby('animal').environment
-                .apply(lambda s: pd.get_dummies(s).cumsum())
-                .stack()
-                .reset_index()
-                .rename(columns={'level_3': 'environment', 0: 'exposure'})
-                .set_index(['animal', 'day', 'epoch', 'environment']))
+def _count_exposure(df):
+    df['exposure'] = np.arange(len(df)) + 1
+    return df
 
-    epoch_keys = epoch_info.set_index('environment', append=True).index
-    new_df = (epoch_info.drop('environment', axis=1)
-              .join(exposure.loc[epoch_keys].reset_index('environment')))
-    new_df['exposure'] = new_df.exposure.where(
-        ~epoch_info.type.isin(['sleep', 'rest', 'nan']))
-    return new_df
+
+def compute_exposure(epoch_info):
+    df = epoch_info.groupby(['animal', 'environment']).apply(
+                _count_exposure)
+    df['exposure'] = df.exposure.where(
+        ~epoch_info.type.isin(['sleep', 'rest', 'nan', 'failed sleep']))
+    return df
 
 
 def get_task(animal):
