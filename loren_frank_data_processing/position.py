@@ -186,12 +186,13 @@ def enter_exit_target(position, target, max_distance=1):
     Returns
     -------
     enter_exit : ndarray, shape (n_time,)
+    at_target : ndarray, shape (n_time,)
 
     '''
     distance_from_target = paired_distances(position, target)
     at_target = distance_from_target < max_distance
     enter_exit = np.r_[0, np.diff(at_target.astype(float))]
-    return enter_exit
+    return enter_exit, at_target
 
 
 def shift_well_enters(enter_exit):
@@ -223,15 +224,15 @@ def segment_path(time, position, well_locations, max_distance_from_well=15):
 
     '''
     n_wells = len(well_locations)
-    well_enter_exit = np.stack(
+    well_enter_exit, at_target = np.stack(
         [enter_exit_target(position, np.atleast_2d(well),
                            max_distance_from_well)
          for well in well_locations], axis=1)
 
     well_labels = np.arange(n_wells) + 1
-    well_enter_exit = np.sum(well_enter_exit * well_labels, axis=1)
+    well_enter_exit = np.sum(well_enter_exit.T * well_labels, axis=1)
     shifted_well_enter_exit = shift_well_enters(well_enter_exit)
-    is_segment = ~(np.cumsum(well_enter_exit) > 0)
+    is_segment = ~(np.sum(at_target, axis=0) > 0)
     labeled_segments, n_segment_labels = label(is_segment)
     segment_labels = np.arange(n_segment_labels) + 1
 
