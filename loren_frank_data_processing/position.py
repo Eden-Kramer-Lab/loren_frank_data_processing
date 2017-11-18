@@ -280,12 +280,12 @@ def get_correct_inbound_outbound(segments_df):
 
     for segment_ind in np.arange(n_segments):
         if segments_df.iloc[segment_ind].from_well == 'center':
-            task[segment_ind] = 'outbound'
+            task[segment_ind] = 'Outbound'
             is_correct[segment_ind] = (
                 segments_df.iloc[segment_ind].to_well ==
                 find_last_non_center_well(segments_df, segment_ind))
         else:
-            task[segment_ind] = 'inbound'
+            task[segment_ind] = 'Inbound'
             is_correct[segment_ind] = (
                 segments_df.iloc[segment_ind].to_well == 'center')
 
