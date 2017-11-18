@@ -263,9 +263,8 @@ def get_correct_inbound_outbound(segments_df):
 
 
 def score_inbound_outbound(segments_df):
-    # Ignore self loops (i.e. center well -> center_well)
     segments_df = (segments_df.copy()
-                   .loc[segments_df.from_well != segments_df.to_well]
+                   .loc[segments_df.distance_traveled > min_distance_traveled]
                    .dropna())
     WELL_NAMES = {
         1: 'center',
