@@ -205,7 +205,7 @@ def shift_well_enters(enter_exit):
     return shifted_enter_exit
 
 
-def segment_path(time, position, well_locations, max_distance_from_well=15):
+def segment_path(time, position, well_locations, max_distance_from_well=10):
     '''Label traversals between each well location.
 
     Parameters
