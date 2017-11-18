@@ -145,6 +145,17 @@ def get_interpolated_position_dataframe(epoch_key, animals,
 
 
 def paired_distances(x, y):
+    '''Euclidean distance between x and y at each time point.
+
+    Parameters
+    ----------
+    x,y : ndarray, shape (n_time, n_space)
+
+    Returns
+    -------
+    distance : ndarray, shape (n_time,)
+
+    '''
     x, y = np.array(x), np.array(y)
     x = np.atleast_2d(x).T if x.ndim < 2 else x
     y = np.atleast_2d(y).T if y.ndim < 2 else y
@@ -152,10 +163,30 @@ def paired_distances(x, y):
 
 
 def enter_exit_target(position, target, max_distance=1):
-    '''
-     1: enter
+    '''Marks when a position has reached a target ("enter")
+    and when it has left a target ("exit").
+
+    The position is considered to have reached a target when it is less than
+    the `max_distance` from the target.
+
+    Enter and exit times are marked as follows:
+     1: entered the target radius
      0: neither
-    -1: exit
+    -1: exited the target radius
+
+    Works for 1D position and 2D position.
+
+    Parameters
+    ----------
+    position : ndarray, shape (n_time, n_space)
+    target : ndarray, shape (1, n_space)
+    max_distance : float, optional
+        How close the position is to the target to be considered at the target.
+
+    Returns
+    -------
+    enter_exit : ndarray, shape (n_time,)
+
     '''
     distance_from_target = paired_distances(position, target)
     at_target = distance_from_target < max_distance
@@ -164,6 +195,7 @@ def enter_exit_target(position, target, max_distance=1):
 
 
 def shift_well_enters(enter_exit):
+    '''Shifts the enter times back one time point.'''
     shifted_enter_exit = enter_exit.copy()
     old_ind = np.where(enter_exit > 0)[0]  # positive entries are well-entries
     new_ind = old_ind - 1
@@ -173,18 +205,20 @@ def shift_well_enters(enter_exit):
 
 
 def segment_path(time, position, well_locations, max_distance_from_well=15):
-    '''
+    '''Label traversals between each well location.
 
     Parameters
     ----------
     time : ndarray, shape (n_time,)
     position : ndarray, shape (n_time, n_space)
     well_locations : array_like, shape (n_wells, n_space)
-    max_distance : float, optional
+    max_distance_from_well : float, optional
+        The animal is considered at a well location if its position is closer
+        than this value.
 
     Returns
     -------
-    segments_df : pandas DataFrame
+    segments_df : pandas DataFrame, shape (n_segments, 6)
     labeled_segments : pandas DataFrame, shape (n_time,)
 
     '''
@@ -262,7 +296,26 @@ def get_correct_inbound_outbound(segments_df):
     return segments_df
 
 
-def score_inbound_outbound(segments_df):
+def score_inbound_outbound(segments_df, min_distance_traveled=50):
+    '''In the alternating arm task, determines whether the trial should be
+    inbound (running to the center arm) or outbound (running to the opposite
+    outer arm as before) and if the trial was performed correctly.
+
+    Parameters
+    ----------
+    segments_df : pandas DataFrame
+        Output of `segment_path` function.
+    min_distance_traveled : float, optional
+        Minimum path length (in cm) while outside of the well radius for
+        a segment to be considered as a trial.
+
+    Returns
+    -------
+    segments_df : pandas DataFrame
+        Same as the input dataframe but with the wells labeled
+        (left, right, center) and columns for `task` (inbound/outbound) and
+        `is_correct` (True/False).
+    '''
     segments_df = (segments_df.copy()
                    .loc[segments_df.distance_traveled > min_distance_traveled]
                    .dropna())
@@ -278,6 +331,8 @@ def score_inbound_outbound(segments_df):
 
 
 def get_well_locations(epoch_key, animals):
+    '''Retrieves the 2D coordinates for each well.
+    '''
     animal, day, epoch = epoch_key
     task_file = get_data_structure(animals[animal], day, 'task', 'task')
     linearcoord = task_file[epoch - 1]['linearcoord'][0, 0].squeeze()
