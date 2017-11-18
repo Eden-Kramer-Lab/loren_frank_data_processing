@@ -270,7 +270,7 @@ def get_correct_inbound_outbound(segments_df):
 
     task[0] = 'outbound'
     is_correct[0] = segments_df.iloc[0].from_well == 'center'
-    if ~is_correct:
+    if ~is_correct[0]:
         raise ValueError('First segment does not start from the center well.')
 
     task[1] = 'inbound'
