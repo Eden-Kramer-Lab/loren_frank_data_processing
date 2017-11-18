@@ -235,7 +235,7 @@ def get_correct_inbound_outbound(segments_df):
     is_correct = np.empty((n_segments,), dtype=bool)
 
     task[0] = 'outbound'
-    is_correct[0] = segments_df.iloc[0].to_well == 'center'
+    is_correct[0] = segments_df.iloc[0].from_well == 'center'
 
     task[1] = 'inbound'
     is_correct[1] = segments_df.iloc[1].to_well == 'center'
