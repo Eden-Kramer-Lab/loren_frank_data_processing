@@ -278,15 +278,7 @@ def get_correct_inbound_outbound(segments_df):
     task = np.empty((n_segments,), dtype=object)
     is_correct = np.empty((n_segments,), dtype=bool)
 
-    task[0] = 'outbound'
-    is_correct[0] = segments_df.iloc[0].from_well == 'center'
-    if ~is_correct[0]:
-        raise ValueError('First segment does not start from the center well.')
-
-    task[1] = 'inbound'
-    is_correct[1] = segments_df.iloc[1].to_well == 'center'
-
-    for segment_ind in np.arange(n_segments - 2) + 2:
+    for segment_ind in np.arange(n_segments):
         if segments_df.iloc[segment_ind].from_well == 'center':
             task[segment_ind] = 'outbound'
             is_correct[segment_ind] = (
