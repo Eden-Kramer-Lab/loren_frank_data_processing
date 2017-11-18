@@ -266,7 +266,11 @@ def segment_path(time, position, well_locations, max_distance_from_well=15):
 
 def find_last_non_center_well(segments_df, segment_ind):
     last_wells = segments_df.iloc[:segment_ind - 1].to_well
-    return last_wells[last_wells != 'center'].iloc[-1]
+    try:
+        return last_wells[last_wells != 'center'].iloc[-1]
+    except IndexError:
+        # There are no non-center wells. Just return current well.
+        return segments_df.iloc[segment_ind].to_well
 
 
 def get_correct_inbound_outbound(segments_df):
