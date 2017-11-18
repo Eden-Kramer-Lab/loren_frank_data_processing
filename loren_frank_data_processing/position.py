@@ -264,6 +264,11 @@ def segment_path(time, position, well_locations, max_distance_from_well=15):
             pd.DataFrame(dict(labeled_segments=labeled_segments), index=time))
 
 
+def find_last_non_center_well(segments_df, segment_ind):
+    last_wells = segments_df.iloc[:segment_ind - 1].to_well
+    return last_wells[last_wells != 'center'].iloc[-1]
+
+
 def get_correct_inbound_outbound(segments_df):
     n_segments = segments_df.shape[0]
     task = np.empty((n_segments,), dtype=object)
@@ -277,15 +282,12 @@ def get_correct_inbound_outbound(segments_df):
     task[1] = 'inbound'
     is_correct[1] = segments_df.iloc[1].to_well == 'center'
 
-    OUTER_WELL_NAMES = np.array(['left', 'right'])
-
     for segment_ind in np.arange(n_segments - 2) + 2:
         if segments_df.iloc[segment_ind].from_well == 'center':
             task[segment_ind] = 'outbound'
-            correct_arm = OUTER_WELL_NAMES[
-                OUTER_WELL_NAMES != segments_df.iloc[segment_ind - 2].to_well]
             is_correct[segment_ind] = (
-                segments_df.iloc[segment_ind].to_well == correct_arm)
+                segments_df.iloc[segment_ind].to_well ==
+                find_last_non_center_well(segments_df, segment_ind))
         else:
             task[segment_ind] = 'inbound'
             is_correct[segment_ind] = (
