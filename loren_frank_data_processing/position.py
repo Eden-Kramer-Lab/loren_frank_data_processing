@@ -296,7 +296,7 @@ def get_correct_inbound_outbound(segments_df):
     return segments_df
 
 
-def score_inbound_outbound(segments_df, min_distance_traveled=50):
+def score_inbound_outbound(segments_df, min_distance_traveled=100):
     '''In the alternating arm task, determines whether the trial should be
     inbound (running to the center arm) or outbound (running to the opposite
     outer arm as before) and if the trial was performed correctly.
