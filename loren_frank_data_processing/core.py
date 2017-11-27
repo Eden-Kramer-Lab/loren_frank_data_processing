@@ -4,7 +4,6 @@
 from collections import namedtuple
 from logging import getLogger
 from os.path import join
-from sys import exit
 
 import numpy as np
 import pandas as pd
@@ -107,7 +106,6 @@ def get_data_structure(animal, day, file_type, variable):
     except (IOError, TypeError):
         logger.error('Failed to load file: {0}'.format(
             get_data_filename(animal, day, file_type)))
-        exit()
     n_epochs = file[variable][0, -1].size
     return [file[variable][0, -1][0, ind]
             for ind in np.arange(n_epochs)]
