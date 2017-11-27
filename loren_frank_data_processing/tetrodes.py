@@ -3,7 +3,7 @@ from os.path import join
 import pandas as pd
 from scipy.io import loadmat
 
-from .core import _convert_to_dict, reconstruct_time
+from .core import _convert_to_dict, reconstruct_time, logger
 
 
 def get_tetrode_info_path(animal):
@@ -53,8 +53,9 @@ def get_LFP_dataframe(tetrode_key, animals):
             data=lfp_data['data'][0, 0].squeeze(),
             index=lfp_time,
             name='electric_potential')
-    except FileNotFoundError:
-        pass
+    except (FileNotFoundError, TypeError):
+        logger.error('Failed to load file: {0}'.format(
+            get_LFP_filename(tetrode_key, animals)))
 
 
 def make_tetrode_dataframe(animals):
