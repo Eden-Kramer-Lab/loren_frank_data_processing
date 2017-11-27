@@ -1,7 +1,7 @@
 '''Functions for accessing data in the Frank lab format and saving
 
 '''
-
+from collections import namedtuple
 from logging import getLogger
 from os.path import join
 from sys import exit
@@ -11,6 +11,8 @@ import pandas as pd
 from scipy.io import loadmat
 
 logger = getLogger(__name__)
+
+Animal = namedtuple('Animal', {'directory', 'short_name'})
 
 
 def get_data_filename(animal, day, file_type):
