@@ -4,73 +4,8 @@ import numpy as np
 
 import networkx as nx
 
-from ..core import get_data_structure
 
 np.warnings.filterwarnings('ignore')
-
-
-def get_track_segments(epoch_key, animals):
-    '''
-
-    Parameters
-    ----------
-    epoch_key : tuple
-    animals : dict of namedtuples
-
-    Returns
-    -------
-    track_segments : ndarray, shape (n_segments, n_nodes, n_space)
-    center_well_position : ndarray, shape (n_space,)
-
-    '''
-    animal, day, epoch = epoch_key
-    task_file = get_data_structure(animals[animal], day, 'task', 'task')
-    linearcoord = task_file[epoch - 1]['linearcoord'][0, 0].squeeze()
-    track_segments = [np.stack(((arm[:-1, :, 0], arm[1:, :, 0])), axis=1)
-                      for arm in linearcoord]
-    center_well_position = track_segments[0][0][0]
-    return (np.unique(np.concatenate(track_segments), axis=0),
-            center_well_position)
-
-
-def make_track_graph(epoch_key, animals):
-    '''
-
-    Parameters
-    ----------
-    epoch_key : tuple, (animal, day, epoch)
-    animals : dict of namedtuples
-
-    Returns
-    -------
-    track_graph : networkx Graph
-    center_well_id : int
-
-    '''
-    track_segments, center_well_position = get_track_segments(
-        epoch_key, animals)
-    nodes = np.unique(track_segments.reshape((-1, 2)), axis=0)
-
-    edges = np.zeros(track_segments.shape[:2], dtype=int)
-    for node_id, node in enumerate(nodes):
-        edge_ind = np.nonzero(np.isin(track_segments, node).sum(axis=2) > 1)
-        edges[edge_ind] = node_id
-
-    edge_distances = np.linalg.norm(
-        np.diff(track_segments, axis=-2).squeeze(), axis=1)
-
-    track_graph = nx.Graph()
-
-    for node_id, node_position in enumerate(nodes):
-        track_graph.add_node(node_id, pos=tuple(node_position))
-
-    for edge, distance in zip(edges, edge_distances):
-        track_graph.add_edge(edge[0], edge[1], distance=distance)
-
-    center_well_id = np.unique(
-        np.nonzero(np.isin(nodes, center_well_position).sum(axis=1) > 1)[0])[0]
-
-    return track_graph, center_well_id
 
 
 def get_track_segments_from_graph(track_graph):
