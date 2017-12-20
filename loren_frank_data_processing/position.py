@@ -145,7 +145,7 @@ def get_interpolated_position_dataframe(epoch_key, animals,
         (position_continuous.index, time))), name='time')
     interpolated_position = (position_continuous
                              .reindex(index=new_index)
-                             .interpolate(method='values')
+                             .interpolate(method='time')
                              .reindex(index=time))
     interpolated_position.loc[
         interpolated_position.linear_distance < 0, 'linear_distance'] = 0
