@@ -137,7 +137,43 @@ def _get_windowed_dataframe(time_series, segments, window_start, window_end):
         yield time_series_segment.set_index(new_time)
 
 
-def reshape_to_segments(time_series, segments, window_offset=None, axis=0):
+def _get_windowed_dataframe_sampling_frequency(time_series, segments,
+                                               window_start, window_end,
+                                               sampling_frequency):
+    '''For each segment, return a dataframe with the time relative to
+    the start of the segment + window_offset.
+
+    Uses the sampling frequency to get more accurate time relative to the
+    start time of the segments if the samples are evenly spaced.
+    '''
+    n_time = len(time_series)
+    n_start_samples = np.fix(
+        window_start.total_seconds() * sampling_frequency).astype(int)
+    if window_end is not None:
+        n_end_samples = np.fix(
+            window_end.total_seconds() * sampling_frequency).astype(int) + 1
+
+    for segment_start, segment_end in segments:
+        segment_start_ind = time_series.index.get_loc(
+            segment_start, method='nearest')
+        window_start_ind = np.max([0, segment_start_ind + n_start_samples])
+        if window_end is not None:
+            window_end_ind = np.min(
+                [n_time, segment_start_ind + n_end_samples])
+        else:
+            window_end_ind = time_series.index.get_loc(
+                segment_end, method='nearest')
+        time_series_segment = time_series.iloc[
+            window_start_ind:window_end_ind, :]
+        time_ind = np.arange(window_start_ind - segment_start_ind,
+                             window_end_ind - segment_start_ind)
+        new_time = pd.TimedeltaIndex(
+            time_ind / sampling_frequency, unit='s', name='time')
+        yield time_series_segment.set_index(new_time)
+
+
+def reshape_to_segments(time_series, segments, window_offset=None,
+                        sampling_frequency=None, axis=0):
     '''Take multiple windows of a time series and set time relative to
     the start of the window.
 
@@ -157,7 +193,11 @@ def reshape_to_segments(time_series, segments, window_offset=None, axis=0):
         slice (window_start, window_end). If `window_offset` is given, then the
         returned window will be (window_start + segment_start, window_end). If
         window_start or window_end is None, then it will be replaced with
-        segment_start and segment_end, respectivity
+        segment_start and segment_end, respectivity.
+        Window offset should be given in seconds.
+    sampling_frequency : float or None, optional
+        If given, then will use to calculate the relative time of the windows.
+        This is more accurate if the samples are evenly spaced.
     axis : int, optional
         Concat axis
 
@@ -167,14 +207,21 @@ def reshape_to_segments(time_series, segments, window_offset=None, axis=0):
 
     Examples
     --------
-    >>> n_time = 10
-    >>> time = pd.Index(np.arange(0, n_time) / 1000, name='time')
+    >>> n_time = 15
+    >>> sampling_frequency = 1500
+    >>> time = np.arange(0, n_time) / sampling_frequency
+    >>> time = pd.TimedeltaIndex(time, name='time', unit='s')
     >>> time_series = pd.DataFrame({'data': np.arange(n_time)}, index=time)
-    >>> reshape_to_segments(time_series, [(0.001, 0.004), (0.006, 0.008)])
-    >>> reshape_to_segments(time_series, [(0.001, 0.004), (0.006, 0.008)],
+    >>> segments = pd.DataFrame([(0.001, 0.004), (0.006, 0.008)]).apply(
+            pd.to_timedelta, unit='s')
+    >>> reshape_to_segments(time_series, segments)
+    >>> reshape_to_segments(time_series, segments,
                             window_offset=(-0.001, None))
-    >>> reshape_to_segments(time_series, [(0.001, 0.004), (0.006, 0.008)],
+    >>> reshape_to_segments(time_series, segments,
                             window_offset=(-0.001, 0.001))
+    >>> reshape_to_segments(time_series, segments,
+                            window_offset=(-0.001, 0.001),
+                            sampling_frequency=sampling_frequency)
 
     '''
     segments_index = segments.index
@@ -191,8 +238,14 @@ def reshape_to_segments(time_series, segments, window_offset=None, axis=0):
             window_end = pd.Timedelta(seconds=window_end)
     else:
         window_start, window_end = pd.Timedelta(seconds=0), None
-
-    return (pd.concat(_get_windowed_dataframe(
-                time_series, segments, window_start, window_end),
+    if sampling_frequency is None:
+        return (pd.concat(_get_windowed_dataframe(
+            time_series, segments, window_start, window_end),
+            keys=segments_index,
+            axis=axis).sort_index())
+    else:
+        return (pd.concat(_get_windowed_dataframe_sampling_frequency(
+            time_series, segments, window_start, window_end,
+            sampling_frequency),
             keys=segments_index,
             axis=axis).sort_index())
