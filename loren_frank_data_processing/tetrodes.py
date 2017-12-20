@@ -1,9 +1,10 @@
 from os.path import join
 
+import numpy as np
 import pandas as pd
 from scipy.io import loadmat
 
-from .core import _convert_to_dict, reconstruct_time, logger
+from .core import _convert_to_dict, logger, reconstruct_time
 
 
 def get_tetrode_info_path(animal):
@@ -188,3 +189,31 @@ def get_trial_time(epoch_key, animals):
             break
 
     return lfp_df.index
+
+
+def get_LFPs(tetrode_keys, animals):
+    '''Retrieves LFP data and makes sure the data has the same timestamps.
+
+    This function is useful when data is collected on different signal
+    processing systems and have slightly different timings. This function will
+    interpolate the data to the time of the first tetrode recorded.
+
+    Parameters
+    ----------
+    tetrode_keys : list of tuples, shape (n_signals,)
+    animals : dict of namedtuples, shape (n_animals)
+
+    Returns
+    -------
+    LFPs : pandas DataFrame, shape (n_time, n_signals)
+
+    '''
+    epoch_key = tetrode_keys[0][:3]
+    time = get_trial_time(epoch_key, animals)
+    LFPs = pd.concat([get_LFP_dataframe(tetrode_key, animals)
+                      for tetrode_key in tetrode_keys], axis=1)
+    new_index = pd.Index(np.unique(np.concatenate(
+        (LFPs.index, time))), name='time')
+    return (LFPs.reindex(index=new_index)
+            .interpolate(method='time')
+            .reindex(index=time))
