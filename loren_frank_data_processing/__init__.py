@@ -11,5 +11,6 @@ from .ripples import (get_computed_consensus_ripple_times,
 from .saving import (get_analysis_file_path, open_mfdataset,
                      read_analysis_files, save_xarray)
 from .task import make_epochs_dataframe
-from .tetrodes import get_LFP_dataframe, get_trial_time, make_tetrode_dataframe
+from .tetrodes import (get_LFP_dataframe, get_LFPs, get_trial_time,
+                       make_tetrode_dataframe)
 from .utilities import copy_animal, reshape_to_segments
