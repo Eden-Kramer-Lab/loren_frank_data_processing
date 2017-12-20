@@ -115,10 +115,9 @@ def get_interpolated_position_dataframe(epoch_key, animals,
     position = position_df.loc[:, ['x_position', 'y_position']].values
     track_segment_id = classify_track_segments(
         track_graph, position,
-        route_euclidean_distance_scaling=1)
-    linear_distance = calculate_linear_distance(
+        route_euclidean_distance_scaling=route_euclidean_distance_scaling)
+    position_df['linear_distance'] = calculate_linear_distance(
         track_graph, track_segment_id, center_well_id, position)
-    position_df['linear_distance'] = linear_distance
 
     old_dt = (position_df.index[1] - position_df.index[0]).total_seconds()
 
