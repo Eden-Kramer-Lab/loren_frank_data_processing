@@ -84,6 +84,7 @@ def get_linear_position_structure(epoch_key, animals):
 def get_interpolated_position_dataframe(epoch_key, animals,
                                         time_function=get_trial_time,
                                         max_distance_from_well=15):
+                                        route_euclidean_distance_scaling=1):
     '''Gives the interpolated position of animal for a given epoch.
 
     Defaults to interpolating the position to the LFP time. Can use the
@@ -99,6 +100,7 @@ def get_interpolated_position_dataframe(epoch_key, animals,
         Function that take an epoch key (animal_short_name, day, epoch) that
         defines the time the multiunits are relative to. Defaults to using
         the time the LFPs are sampled at.
+    route_euclidean_distance_scaling : float, optional
 
     Returns
     -------
