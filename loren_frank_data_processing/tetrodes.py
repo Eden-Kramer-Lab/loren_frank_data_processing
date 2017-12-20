@@ -158,19 +158,18 @@ def convert_tetrode_epoch_to_dataframe(tetrodes_in_epoch, epoch_key):
         return pd.DataFrame(tetrode_dict_list)
 
 
-def get_trial_time(epoch_or_tetrode_key, animals):
+def get_trial_time(epoch_key, animals):
     '''Time in the recording session in terms of the LFP.
 
-    If an `epoch_key` is given, this will handle the case where different
-    DSP systems will have slightly different timing. Otherwise if a
-    `tetrode_key` is given, then it will return the time for that tetrode.
+    This will return the LFP time of the first tetrode found (according to the
+    tetrode info). This is useful when there are slightly different timings
+    for the recordings and you need a common time.
 
     Parameters
     ----------
-    epoch_or_tetrode_key : tuple
+    epoch_key : tuple
         Unique key identifying a recording epoch with elements
-        (animal, day, epoch) OR a unique identifying key for a tetrode with
-        elements (animal, day, epoch, tetrode_number).
+        (animal, day, epoch)
     animals : dict of named-tuples
         Dictionary containing information about the directory for each
         animal. The key is the animal_short_name.
@@ -180,18 +179,12 @@ def get_trial_time(epoch_or_tetrode_key, animals):
     time : pandas.Index
 
     '''
-    try:
-        animal, day, epoch, tetrode_number = epoch_or_tetrode_key[:4]
-        lfp_df = get_LFP_dataframe(
-            (animal, day, epoch, tetrode_number), animals)
-    except ValueError:
-        # no tetrode number provided
-        tetrode_info = (
-            make_tetrode_dataframe(animals)
-            .xs(epoch_or_tetrode_key, drop_level=False))
-        lfp_df = pd.concat(
-            [get_LFP_dataframe(tetrode_key, animals)
-             for tetrode_key in tetrode_info.index],
-            axis=1)
+    tetrode_info = (
+        make_tetrode_dataframe(animals)
+        .xs(epoch_key, drop_level=False))
+    for tetrode_key in tetrode_info.index:
+        lfp_df = get_LFP_dataframe(tetrode_key, animals)
+        if lfp_df is not None:
+            break
 
     return lfp_df.index
