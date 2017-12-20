@@ -150,8 +150,7 @@ def convert_tetrode_epoch_to_dataframe(tetrodes_in_epoch, epoch_key):
                   .assign(tetrode_number=lambda x: x.index + 1)
                   .assign(tetrode_id=_get_tetrode_id)
                 # set index to identify rows
-                  .set_index(['animal', 'day', 'epoch', 'tetrode_number'],
-                             drop=False)
+                  .set_index(['animal', 'day', 'epoch', 'tetrode_number'])
                   .sort_index()
                 )
     except KeyError:

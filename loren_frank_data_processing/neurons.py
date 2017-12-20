@@ -136,7 +136,7 @@ def convert_neuron_epoch_to_dataframe(tetrodes_in_epoch, animal, day,
                   .assign(epoch=epoch)
                   .assign(neuron_id=_get_neuron_id)
                 # set index to identify rows
-                  .set_index(NEURON_INDEX, drop=False)
+                  .set_index(NEURON_INDEX)
                   .sort_index()
                 )
     except AttributeError:
