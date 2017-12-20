@@ -95,7 +95,7 @@ def get_spike_indicator_dataframe(neuron_key, animals,
     ---
 
     '''
-    time = time_function(neuron_key, animals)
+    time = time_function(neuron_key[:3], animals)
     spikes_df = get_spikes_dataframe(neuron_key, animals)
     time_index = np.digitize(spikes_df.index.total_seconds(),
                              time.total_seconds())
