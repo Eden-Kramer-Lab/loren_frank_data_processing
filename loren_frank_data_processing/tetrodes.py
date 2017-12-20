@@ -54,7 +54,7 @@ def get_LFP_dataframe(tetrode_key, animals):
             index=lfp_time,
             name='electric_potential')
     except (FileNotFoundError, TypeError):
-        logger.error('Failed to load file: {0}'.format(
+        logger.warning('Failed to load file: {0}'.format(
             get_LFP_filename(tetrode_key, animals)))
 
 
