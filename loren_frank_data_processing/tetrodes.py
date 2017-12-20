@@ -52,7 +52,7 @@ def get_LFP_dataframe(tetrode_key, animals):
             lfp_data['data'][0, 0].size,
             float(lfp_data['samprate'][0, 0].squeeze()))
         return pd.Series(
-            data=lfp_data['data'][0, 0].squeeze(),
+            data=lfp_data['data'][0, 0].squeeze().astype(float),
             index=lfp_time,
             name='electric_potential')
     except (FileNotFoundError, TypeError):
