@@ -84,7 +84,8 @@ def get_linear_position_structure(epoch_key, animals):
 def get_interpolated_position_dataframe(epoch_key, animals,
                                         time_function=get_trial_time,
                                         max_distance_from_well=5,
-                                        route_euclidean_distance_scaling=1):
+                                        route_euclidean_distance_scaling=1,
+                                        min_distance_traveled=50):
     '''Gives the interpolated position of animal for a given epoch.
 
     Defaults to interpolating the position to the LFP time. Can use the
@@ -102,6 +103,7 @@ def get_interpolated_position_dataframe(epoch_key, animals,
         the time the LFPs are sampled at.
     max_distance_from_well : float, optional
     route_euclidean_distance_scaling : float, optional
+    min_distance_traveled : float, optional
 
     Returns
     -------
@@ -125,8 +127,9 @@ def get_interpolated_position_dataframe(epoch_key, animals,
     segments_df, labeled_segments = segment_path(
         position_df.index, position, well_locations,
         max_distance_from_well=max_distance_from_well)
-    segments_df = score_inbound_outbound(segments_df).loc[
-        :, ['from_well', 'to_well', 'task', 'is_correct']]
+    segments_df = score_inbound_outbound(
+        segments_df, min_distance_traveled).loc[
+            :, ['from_well', 'to_well', 'task', 'is_correct']]
 
     segments_df = pd.merge(
         labeled_segments, segments_df, right_index=True,
