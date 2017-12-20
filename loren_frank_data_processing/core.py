@@ -128,10 +128,10 @@ def reconstruct_time(start_time, n_samples, sampling_frequency):
     time : pandas Index
 
     '''
-    start_time = pd.Timedelta(seconds=start_time)
-    dt = pd.Timedelta(seconds=float(1 / sampling_frequency))
-    return pd.TimedeltaIndex(start=start_time, freq=dt, periods=n_samples,
-                             name='time')
+
+    return pd.TimedeltaIndex(
+        start_time + np.arange(n_samples) / sampling_frequency,
+        unit='s', name='time')
 
 
 def _convert_to_dict(struct_array):

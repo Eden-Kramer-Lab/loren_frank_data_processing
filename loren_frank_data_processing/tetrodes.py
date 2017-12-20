@@ -46,9 +46,10 @@ def get_LFP_dataframe(tetrode_key, animals):
     try:
         lfp_file = loadmat(get_LFP_filename(tetrode_key, animals))
         lfp_data = lfp_file['eeg'][0, -1][0, -1][0, -1]
-        lfp_time = reconstruct_time(lfp_data['starttime'][0, 0].item(),
-                                    lfp_data['data'][0, 0].size,
-                                    lfp_data['samprate'][0, 0])
+        lfp_time = reconstruct_time(
+            lfp_data['starttime'][0, 0].item(),
+            lfp_data['data'][0, 0].size,
+            float(lfp_data['samprate'][0, 0].squeeze()))
         return pd.Series(
             data=lfp_data['data'][0, 0].squeeze(),
             index=lfp_time,
