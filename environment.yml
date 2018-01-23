@@ -10,7 +10,7 @@ dependencies:
 - dask
 - scipy
 - netcdf4
-- networkx
+- "networkx >= 2.0"
 - "pytest >= 2.7.1"
 - pytest-cov
 - coveralls
