@@ -1,27 +1,34 @@
-from .core import find_closest_ind, get_data_structure
+import numpy as np
+import pandas as pd
+
+from .core import get_data_structure
+from .tetrodes import get_trial_time
 
 
-def get_DIO_variable(animal, days, dio_var, epoch_type='', environment=''):
-    '''Returns a list of lists given a DIO variable (pulsetimes, timesincelast,
-    pulselength, and pulseind) with a length corresponding to the number of
-    epochs (first level) and the number of active pins (second level)
-    '''
-    epoch_pins = get_data_structure(animal, days, 'DIO', 'DIO',
-                                    epoch_type=epoch_type,
-                                    environment=environment)
-    return [
-        [pin[0][dio_var][0][0] for pin in pins.T
-         if pin[0].dtype.names is not None]
-        for pins in epoch_pins
-    ]
+def get_DIO(epoch_key, animals):
+    ''''''
+    animal, day, epoch = epoch_key
+    pins = get_data_structure(animals[animal], day, 'DIO', 'DIO')[
+        epoch - 1].squeeze()
+    pins_df = []
+
+    for pin in pins:
+        time = pin['times'][0, 0].squeeze()
+        if time.size > 1:
+            time = pd.to_timedelta(time, unit='s')
+
+            values = pin['values'][0, 0].squeeze()
+            pin_id = pin['original_id'][0, 0].item()
+
+            pins_df.append(
+                pd.Series(values, index=time, name=pin_id))
+    return pd.concat(pins_df, axis=1).fillna(0)
 
 
-def get_pulse_position_ind(pulse_times, position_times):
-    '''Returns the index of a pulse from the DIO data structure in terms of the
-    position structure time.
-    '''
-    # position times from the pos files are already adjusted
-    TIME_CONSTANT = 1E4
-    return [find_closest_ind(
-        position_times, pin_pulse_times[:, 0].flatten() / TIME_CONSTANT)
-        for pin_pulse_times in pulse_times]
+def get_DIO_indicator(epoch_key, animals, time_function=get_trial_time):
+    time = time_function(epoch_key, animals)
+    dio = get_DIO(epoch_key, animals)
+    time_index = np.digitize(dio.index.total_seconds(),
+                             time.total_seconds())
+    return (dio.groupby(time[time_index]).sum()
+            .reindex(index=time, fill_value=0))
