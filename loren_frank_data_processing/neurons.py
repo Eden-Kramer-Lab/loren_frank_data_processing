@@ -60,8 +60,12 @@ def get_spikes_dataframe(neuron_key, animals):
     spikes_dataframe : pandas.DataFrame
     '''
     animal, day, epoch, tetrode_number, neuron_number = neuron_key
-    neuron_file = loadmat(
-        get_data_filename(animals[animal], day, 'spikes'))
+    try:
+        neuron_file = loadmat(
+            get_data_filename(animals[animal], day, 'spikes'))
+    except (FileNotFoundError, TypeError):
+        logger.warning('Failed to load file: {0}'.format(
+            get_data_filename(animals[animal], day, 'spikes')))
     try:
         spike_time = neuron_file['spikes'][0, -1][0, epoch - 1][
             0, tetrode_number - 1][0, neuron_number - 1][0]['data'][0][

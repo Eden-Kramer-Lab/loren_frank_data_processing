@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from scipy.io import loadmat
 
+from .core import logger
 from .tetrodes import get_trial_time
 
 
@@ -28,7 +29,11 @@ def get_multiunit_dataframe(tetrode_key, animals):
 
     '''
     TO_NANOSECONDS = 1E5
-    multiunit_file = loadmat(get_multiunit_filename(tetrode_key, animals))
+    try:
+        multiunit_file = loadmat(get_multiunit_filename(tetrode_key, animals))
+    except (FileNotFoundError, TypeError):
+        logger.warning('Failed to load file: {0}'.format(
+            get_multiunit_filename(tetrode_key, animals)))
     multiunit_names = [
         name[0][0].lower().replace(' ', '_')
         for name in multiunit_file['filedata'][0, 0]['paramnames']]
