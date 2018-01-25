@@ -1,3 +1,9 @@
+'''
+The DIO cell gives arrival/departure times at the end of each arm of the maze
+(as indicated by the IR motion sensors at the end of the wells) and the
+start/stop times for the output trigger to the reward pump
+'''
+
 import numpy as np
 import pandas as pd
 
