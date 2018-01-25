@@ -82,12 +82,12 @@ def segment_path(time, position, well_locations, max_distance_from_well=10):
     labeled_segments : pandas DataFrame, shape (n_time,)
 
     '''
-    n_wells = len(well_locations)
+
     well_enter_exit, at_target = np.stack(
         [enter_exit_target(position, np.atleast_2d(well),
                            max_distance_from_well)
          for well in well_locations], axis=1)
-
+    n_wells = len(well_locations)
     well_labels = np.arange(n_wells) + 1
     well_enter_exit = np.sum(well_enter_exit.T * well_labels, axis=1)
     shifted_well_enter_exit = shift_well_enters(well_enter_exit)
