@@ -104,7 +104,7 @@ def segment_path(time, position, well_locations, epoch_key, animals,
         dio_indicator = get_DIO_indicator(epoch_key, animals)
         well_enter_exit, at_target = np.stack(
             [enter_exit_target_dio(
-                time, dio_indicator.loc[:, dio_name].values)
+                dio_indicator.loc[:, dio_name].values)
              for dio_name in _DIO_WELL_ORDER], axis=1)
 
     except (FileNotFoundError, TypeError):
