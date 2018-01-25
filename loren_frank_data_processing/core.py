@@ -103,12 +103,14 @@ def get_data_structure(animal, day, file_type, variable):
     '''
     try:
         file = loadmat(get_data_filename(animal, day, file_type))
+        n_epochs = file[variable][0, -1].size
+        return [file[variable][0, -1][0, ind]
+                for ind in np.arange(n_epochs)]
     except (IOError, TypeError):
         logger.error('Failed to load file: {0}'.format(
             get_data_filename(animal, day, file_type)))
-    n_epochs = file[variable][0, -1].size
-    return [file[variable][0, -1][0, ind]
-            for ind in np.arange(n_epochs)]
+        return None
+
 
 
 def reconstruct_time(start_time, n_samples, sampling_frequency):
