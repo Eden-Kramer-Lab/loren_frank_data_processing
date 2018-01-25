@@ -19,15 +19,21 @@ def get_DIO(epoch_key, animals):
     pins_df = []
 
     for pin in pins:
-        time = pd.to_timedelta(pin['times'][0, 0].squeeze(), unit='s')
-        values = pin['values'][0, 0].squeeze()
-        pin_id = pin['original_id'][0, 0].item()
-
         try:
-            series = pd.Series(values, index=time, name=pin_id)
-        except TypeError:
-            series = pd.Series(name=pin_id)
-        pins_df.append(series)
+            try:
+                time = pd.to_timedelta(pin['times'][0, 0].squeeze(), unit='s')
+            except ValueError:
+                time = pd.to_timedelta(pin['times'][0, 0].item(), unit='s')
+            values = pin['values'][0, 0].squeeze()
+            pin_id = pin['original_id'][0, 0].item()
+
+            try:
+                series = pd.Series(values, index=time, name=pin_id)
+            except TypeError:
+                series = pd.Series(name=pin_id)
+            pins_df.append(series)
+        except IndexError:
+            continue
     return pd.concat(pins_df, axis=1).fillna(0).sort_index()
 
 
