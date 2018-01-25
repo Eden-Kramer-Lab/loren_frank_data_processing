@@ -125,10 +125,10 @@ def get_interpolated_position_dataframe(epoch_key, animals,
 
     well_locations = get_well_locations(epoch_key, animals)
     segments_df, labeled_segments = segment_path(
-        position_df.index, position, well_locations,
+        position_df.index, position, well_locations, epoch_key, animals,
         max_distance_from_well=max_distance_from_well)
     segments_df = score_inbound_outbound(
-        segments_df, min_distance_traveled).loc[
+        segments_df, epoch_key, animals, min_distance_traveled).loc[
             :, ['from_well', 'to_well', 'task', 'is_correct']]
 
     segments_df = pd.merge(

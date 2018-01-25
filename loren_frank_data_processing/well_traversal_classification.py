@@ -2,6 +2,17 @@ import numpy as np
 import pandas as pd
 from scipy.ndimage.measurements import label
 
+from .DIO import get_DIO, get_DIO_indicator
+
+_WELL_NAMES = {
+    1: 'center',
+    2: 'left',
+    3: 'right'
+}
+
+_REWARD_DIOS = ['Dout7', 'Dout8', 'Dout9']
+_DIO_WELL_ORDER = ['Din2', 'Din1', 'Din3']
+
 
 def paired_distances(x, y):
     '''Euclidean distance between x and y at each time point.
@@ -54,6 +65,12 @@ def enter_exit_target(position, target, max_distance=1):
     return enter_exit, at_target
 
 
+def enter_exit_target_dio(dio_indicator):
+    at_target = (dio_indicator > 0).astype(np.float16)
+    enter_exit = np.r_[0, np.diff(at_target)]
+    return enter_exit, at_target
+
+
 def shift_well_enters(enter_exit):
     '''Shifts the enter times back one time point.'''
     shifted_enter_exit = enter_exit.copy()
@@ -64,7 +81,8 @@ def shift_well_enters(enter_exit):
     return shifted_enter_exit
 
 
-def segment_path(time, position, well_locations, max_distance_from_well=10):
+def segment_path(time, position, well_locations, epoch_key, animals,
+                 max_distance_from_well=10):
     '''Label traversals between each well location.
 
     Parameters
@@ -82,11 +100,18 @@ def segment_path(time, position, well_locations, max_distance_from_well=10):
     labeled_segments : pandas DataFrame, shape (n_time,)
 
     '''
+    try:
+        dio_indicator = get_DIO_indicator(epoch_key, animals)
+        well_enter_exit, at_target = np.stack(
+            [enter_exit_target_dio(
+                time, dio_indicator.loc[:, dio_name].values)
+             for dio_name in _DIO_WELL_ORDER], axis=1)
 
-    well_enter_exit, at_target = np.stack(
-        [enter_exit_target(position, np.atleast_2d(well),
-                           max_distance_from_well)
-         for well in well_locations], axis=1)
+    except (FileNotFoundError, TypeError):
+        well_enter_exit, at_target = np.stack(
+            [enter_exit_target(position, np.atleast_2d(well),
+                               max_distance_from_well)
+             for well in well_locations], axis=1)
     n_wells = len(well_locations)
     well_labels = np.arange(n_wells) + 1
     well_enter_exit = np.sum(well_enter_exit.T * well_labels, axis=1)
@@ -144,7 +169,7 @@ def get_correct_inbound_outbound(segments_df):
                 segments_df.iloc[segment_ind].to_well !=
                 find_last_non_center_well(segments_df, segment_ind)) & (
                 segments_df.iloc[segment_ind].to_well != 'center'
-                )
+            )
         else:
             task[segment_ind] = 'Inbound'
             is_correct[segment_ind] = (
@@ -156,7 +181,35 @@ def get_correct_inbound_outbound(segments_df):
     return segments_df
 
 
-def score_inbound_outbound(segments_df, min_distance_traveled=50):
+def get_correct_inbound_outbound_dio(segments_df, epoch_key, animals,
+                                     reward_dio_names=_REWARD_DIOS):
+    dio = get_DIO(epoch_key, animals)
+    dio_is_correct = dio.loc[:, reward_dio_names].sum(axis=1)
+    correct_times = (dio_is_correct.loc[dio_is_correct == 1].index
+                     .total_seconds().values)
+    end_times = segments_df.end_time.dt.total_seconds().values
+    correct_ind = np.searchsorted(end_times, correct_times) - 1
+
+    n_segments = len(segments_df)
+    is_correct = np.zeros((n_segments,), dtype=bool)
+    is_correct[correct_ind] = True
+    segments_df['is_correct'] = is_correct
+
+    task = np.empty((n_segments,), dtype=object)
+    for segment_ind in np.arange(n_segments):
+        if segments_df.iloc[segment_ind].from_well == 'center':
+            task[segment_ind] = 'Outbound'
+        else:
+            task[segment_ind] = 'Inbound'
+
+    segments_df['task'] = task
+
+    return segments_df
+
+
+def score_inbound_outbound(
+        segments_df, epoch_key, animals, min_distance_traveled=50,
+        well_names=_WELL_NAMES):
     '''In the alternating arm task, determines whether the trial should be
     inbound (running to the center arm) or outbound (running to the opposite
     outer arm as before) and if the trial was performed correctly.
@@ -179,12 +232,11 @@ def score_inbound_outbound(segments_df, min_distance_traveled=50):
     segments_df = (segments_df.copy()
                    .loc[segments_df.distance_traveled > min_distance_traveled]
                    .dropna())
-    WELL_NAMES = {
-        1: 'center',
-        2: 'left',
-        3: 'right'
-    }
     segments_df = segments_df.assign(
-        to_well=lambda df: df.to_well.map(WELL_NAMES),
-        from_well=lambda df: df.from_well.map(WELL_NAMES))
-    return get_correct_inbound_outbound(segments_df)
+        to_well=lambda df: df.to_well.map(well_names),
+        from_well=lambda df: df.from_well.map(well_names))
+    try:
+        return get_correct_inbound_outbound_dio(
+            segments_df, epoch_key, animals)
+    except (FileNotFoundError, TypeError):
+        return get_correct_inbound_outbound(segments_df)
