@@ -135,7 +135,7 @@ def find_last_non_center_well(segments_df, segment_ind):
 def get_correct_inbound_outbound(segments_df):
     n_segments = segments_df.shape[0]
     task = np.empty((n_segments,), dtype=object)
-    is_correct = np.empty((n_segments,), dtype=bool)
+    is_correct = np.zeros((n_segments,), dtype=bool)
 
     for segment_ind in np.arange(n_segments):
         if segments_df.iloc[segment_ind].from_well == 'center':
