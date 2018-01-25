@@ -101,7 +101,9 @@ def segment_path(time, position, well_locations, epoch_key, animals,
 
     '''
     try:
-        dio_indicator = get_DIO_indicator(epoch_key, animals)
+        def time_func(*args, **kwargs):
+            return time
+        dio_indicator = get_DIO_indicator(epoch_key, animals, time_func)
         well_enter_exit, at_target = np.stack(
             [enter_exit_target_dio(
                 dio_indicator.loc[:, dio_name].values)
