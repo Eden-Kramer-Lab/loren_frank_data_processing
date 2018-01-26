@@ -3,6 +3,7 @@ import pandas as pd
 from scipy.ndimage.measurements import label
 
 from .DIO import get_DIO, get_DIO_indicator
+from .core import logger
 
 _WELL_NAMES = {
     1: 'center',
@@ -108,8 +109,9 @@ def segment_path(time, position, well_locations, epoch_key, animals,
             [enter_exit_target_dio(
                 dio_indicator.loc[:, dio_name].values)
              for dio_name in _DIO_WELL_ORDER], axis=1)
-
     except (FileNotFoundError, TypeError):
+        logger.warn(
+            'No DIO file found, using distance from well to segment trials')
         well_enter_exit, at_target = np.stack(
             [enter_exit_target(position, np.atleast_2d(well),
                                max_distance_from_well)
@@ -241,4 +243,7 @@ def score_inbound_outbound(
         return get_correct_inbound_outbound_dio(
             segments_df, epoch_key, animals)
     except (FileNotFoundError, TypeError):
+        logger.warn(
+            'No DIO file found, inferring correct inbound/outbound from task '
+            'rules')
         return get_correct_inbound_outbound(segments_df)
