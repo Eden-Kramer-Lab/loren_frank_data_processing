@@ -121,8 +121,6 @@ def get_interpolated_position_dataframe(epoch_key, animals,
     position_df['linear_distance'] = calculate_linear_distance(
         track_graph, track_segment_id, center_well_id, position)
 
-    old_dt = (position_df.index[1] - position_df.index[0]).total_seconds()
-
     well_locations = get_well_locations(epoch_key, animals)
     segments_df, labeled_segments = segment_path(
         position_df.index, position, well_locations, epoch_key, animals,
@@ -153,9 +151,8 @@ def get_interpolated_position_dataframe(epoch_key, animals,
     interpolated_position.loc[
         interpolated_position.linear_distance < 0, 'linear_distance'] = 0
     interpolated_position.loc[interpolated_position.speed < 0, 'speed'] = 0
-    limit = np.ceil(old_dt / (time[1] - time[0]).total_seconds()).astype(int)
-    return (pd.concat([position_categorical, interpolated_position], axis=1)
-            .fillna(method='backfill', limit=limit))
+
+    return pd.concat([position_categorical, interpolated_position], axis=1)
 
 
 def get_well_locations(epoch_key, animals):
