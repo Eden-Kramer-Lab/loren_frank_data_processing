@@ -141,6 +141,8 @@ def get_interpolated_position_dataframe(epoch_key, animals,
     position_categorical = (position_df
                             .drop(continuous_columns, axis=1)
                             .reindex(index=time, method='pad'))
+    position_categorical['is_correct'] = (
+        position_categorical.is_correct.fillna(False))
     position_continuous = position_df.drop(categorical_columns, axis=1)
     new_index = pd.Index(np.unique(np.concatenate(
         (position_continuous.index, time))), name='time')
