@@ -5,7 +5,7 @@ from .multiunit import (get_multiunit_dataframe,
 from .neurons import (get_spike_indicator_dataframe, get_spikes_dataframe,
                       make_neuron_dataframe)
 from .position import (get_interpolated_position_dataframe,
-                       get_position_dataframe)
+                       get_position_dataframe, get_segments_df)
 from .ripples import (get_computed_consensus_ripple_times,
                       get_computed_ripples_dataframe)
 from .saving import (get_analysis_file_path, open_mfdataset,

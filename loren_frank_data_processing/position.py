@@ -121,13 +121,8 @@ def get_interpolated_position_dataframe(epoch_key, animals,
     position_df['linear_distance'] = calculate_linear_distance(
         track_graph, track_segment_id, center_well_id, position)
 
-    well_locations = get_well_locations(epoch_key, animals)
-    segments_df, labeled_segments = segment_path(
-        position_df.index, position, well_locations, epoch_key, animals,
-        max_distance_from_well=max_distance_from_well)
-    segments_df = score_inbound_outbound(
-        segments_df, epoch_key, animals, min_distance_traveled).loc[
-            :, ['from_well', 'to_well', 'task', 'is_correct']]
+    segments_df, labeled_segments = get_segments_df(
+        epoch_key, animals, max_distance_from_well, min_distance_traveled)
 
     segments_df = pd.merge(
         labeled_segments, segments_df, right_index=True,
@@ -234,3 +229,17 @@ def make_track_graph(epoch_key, animals):
         np.nonzero(np.isin(nodes, center_well_position).sum(axis=1) > 1)[0])[0]
 
     return track_graph, center_well_id
+
+
+def get_segments_df(epoch_key, animals, max_distance_from_well=5,
+                    min_distance_traveled=50):
+    well_locations = get_well_locations(epoch_key, animals)
+    position_df = get_position_dataframe(epoch_key, animals)
+    position = position_df.loc[:, ['x_position', 'y_position']].values
+    segments_df, labeled_segments = segment_path(
+        position_df.index, position, well_locations, epoch_key, animals,
+        max_distance_from_well=max_distance_from_well)
+    segments_df = score_inbound_outbound(
+        segments_df, epoch_key, animals, min_distance_traveled)
+
+    return segments_df, labeled_segments
