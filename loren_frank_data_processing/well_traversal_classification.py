@@ -2,13 +2,13 @@ import numpy as np
 import pandas as pd
 from scipy.ndimage.measurements import label
 
-from .DIO import get_DIO, get_DIO_indicator
 from .core import logger
+from .DIO import get_DIO, get_DIO_indicator
 
 _WELL_NAMES = {
-    1: 'center',
-    2: 'left',
-    3: 'right'
+    1: 'Center',
+    2: 'Left',
+    3: 'Right'
 }
 
 _REWARD_DIOS = ['Dout7', 'Dout8', 'Dout9']
@@ -155,7 +155,7 @@ def segment_path(time, position, well_locations, epoch_key, animals,
 def find_last_non_center_well(segments_df, segment_ind):
     last_wells = segments_df.iloc[:segment_ind].to_well
     try:
-        return last_wells[last_wells != 'center'].iloc[-1]
+        return last_wells[last_wells != 'Center'].iloc[-1]
     except IndexError:
         # There are no non-center wells. Just return current well.
         return ''
@@ -164,23 +164,38 @@ def find_last_non_center_well(segments_df, segment_ind):
 def get_correct_inbound_outbound(segments_df):
     n_segments = segments_df.shape[0]
     task = np.empty((n_segments,), dtype=object)
+    turn = np.empty((n_segments,), dtype=object)
     is_correct = np.zeros((n_segments,), dtype=bool)
 
     for segment_ind in np.arange(n_segments):
-        if segments_df.iloc[segment_ind].from_well == 'center':
+        cur_segment = segments_df.iloc[segment_ind]
+        if cur_segment.from_well == 'Center':
             task[segment_ind] = 'Outbound'
+            last_non_center_well = find_last_non_center_well(
+                segments_df, segment_ind)
             is_correct[segment_ind] = (
-                segments_df.iloc[segment_ind].to_well !=
-                find_last_non_center_well(segments_df, segment_ind)) & (
-                segments_df.iloc[segment_ind].to_well != 'center'
+                cur_segment.to_well !=
+                last_non_center_well) & (
+                cur_segment.to_well != 'Center'
             )
+            if (last_non_center_well != '') | ~is_correct[segment_ind]:
+                turn[segment_ind] = last_non_center_well
+            else:
+                is_left_turn = (((cur_segment.from_well == 'Left')
+                                 & (cur_segment.to_well == 'Center')) |
+                                ((cur_segment.from_well == 'Center') &
+                                 (cur_segment.to_well == 'Right')))
+
+                turn[segment_ind] = 'Left' if is_left_turn else 'Right'
         else:
             task[segment_ind] = 'Inbound'
             is_correct[segment_ind] = (
-                segments_df.iloc[segment_ind].to_well == 'center')
+                segments_df.iloc[segment_ind].to_well == 'Center')
+            turn[segment_ind] = cur_segment.from_well
 
     segments_df['task'] = task
     segments_df['is_correct'] = is_correct
+    segments_df['turn'] = turn
 
     return segments_df
 
@@ -196,17 +211,33 @@ def get_correct_inbound_outbound_dio(segments_df, epoch_key, animals,
 
     n_segments = len(segments_df)
     is_correct = np.zeros((n_segments,), dtype=bool)
+    turn = np.empty((n_segments,), dtype=object)
+
     is_correct[correct_ind] = True
     segments_df['is_correct'] = is_correct
 
     task = np.empty((n_segments,), dtype=object)
     for segment_ind in np.arange(n_segments):
-        if segments_df.iloc[segment_ind].from_well == 'center':
+        cur_segment = segments_df.iloc[segment_ind]
+        if segments_df.iloc[segment_ind].from_well == 'Center':
             task[segment_ind] = 'Outbound'
+            last_non_center_well = find_last_non_center_well(
+                segments_df, segment_ind)
+            if (last_non_center_well != '') | ~is_correct[segment_ind]:
+                turn[segment_ind] = last_non_center_well
+            else:
+                is_left_turn = (((cur_segment.from_well == 'Left')
+                                 & (cur_segment.to_well == 'Center')) |
+                                ((cur_segment.from_well == 'Center') &
+                                 (cur_segment.to_well == 'Right')))
+
+                turn[segment_ind] = 'Left' if is_left_turn else 'Right'
         else:
             task[segment_ind] = 'Inbound'
+            turn[segment_ind] = cur_segment.from_well
 
     segments_df['task'] = task
+    segments_df['turn'] = turn
 
     return segments_df
 
