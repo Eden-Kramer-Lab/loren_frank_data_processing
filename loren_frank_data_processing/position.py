@@ -133,9 +133,9 @@ def get_interpolated_position_dataframe(epoch_key, animals,
         * position_df.linear_distance)
 
     categorical_columns = ['labeled_segments', 'from_well', 'to_well', 'task',
-                           'is_correct']
+                           'is_correct', 'turn']
     continuous_columns = ['head_direction', 'speed', 'linear_distance',
-                          'x_position', 'y_position']
+                          'x_position', 'y_position', 'linear_position']
     position_categorical = (position_df
                             .drop(continuous_columns, axis=1)
                             .reindex(index=time, method='pad'))
@@ -244,5 +244,7 @@ def get_segments_df(epoch_key, animals, max_distance_from_well=5,
         max_distance_from_well=max_distance_from_well)
     segments_df = score_inbound_outbound(
         segments_df, epoch_key, animals, min_distance_traveled)
+    segments_df = segments_df.loc[
+            :, ['from_well', 'to_well', 'task', 'is_correct', 'turn']]
 
     return segments_df, labeled_segments
