@@ -128,6 +128,9 @@ def get_interpolated_position_dataframe(epoch_key, animals,
         labeled_segments, segments_df, right_index=True,
         left_on='labeled_segments', how='outer')
     position_df = pd.concat((position_df, segments_df), axis=1)
+    position_df['linear_position'] = (
+        position_df.turn.map({np.nan: np.nan, 'Right': 1, 'Left': -1})
+        * position_df.linear_distance)
 
     categorical_columns = ['labeled_segments', 'from_well', 'to_well', 'task',
                            'is_correct']
