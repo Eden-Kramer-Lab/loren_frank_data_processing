@@ -49,11 +49,14 @@ def get_multiunit_dataframe(tetrode_key, animals, datastruct='by_tetrode'):
             index=time).drop('time', axis=1)
     elif datastruct == 'by_day':
         try:
+            # print(tetrode_key)
             multiunit_file = loadmat(get_multiunit_filename(tetrode_key, animals, datastruct=datastruct), squeeze_me=True,struct_as_record=False)
-        except (FileNotFoundError, TypeError):
-            logger.warning('Failed to load file: {0}'.format(
-                get_multiunit_filename(tetrode_key, animals)))
-        multiunit_data = multiunit_file['marks'][epoch-1][ntrode_num-1].marks
+            multiunit_data = multiunit_file['marks'][epoch-1][ntrode_num-1].marks
+        except (FileNotFoundError, TypeError, AttributeError):
+            logger.warning('Failed to load marks for {filename} ntrode:{ntrode_num}'.format(filename=
+                get_multiunit_filename(tetrode_key, animals, datastruct=datastruct), ntrode_num=ntrode_num))
+            return
+
         time = pd.TimedeltaIndex(multiunit_file['marks'][epoch-1][ntrode_num-1].times, unit='s', name='time')
         num_channels = multiunit_data[0].shape[0]
         multiunit_names = ['channel_{chan:02d}_max'.format(chan=chan) for chan in range(0,num_channels)]
@@ -89,12 +92,9 @@ def get_multiunit_filename(tetrode_key, animals, datastruct='by_tetrode'):
         return join(animals[animal].directory, 'EEG', filename)
 
     elif datastruct == 'by_day':
-        animal, day, _, tetrode_number = tetrode_key
-        filename = ('{animal.short_name}marks{day:02d}'
-                    '.mat').format(
-            animal=animals[animal],
-            day=day,
-        )
+        animal, day, epoch, tetrode_number = tetrode_key
+        print(tetrode_key)
+        filename = '{animal.short_name}marks{day:02d}.mat'.format(animal=animals[animal], day=day)
         return join(animals[animal].directory, filename)
 
 def get_multiunit_indicator_dataframe(tetrode_key, animals,
