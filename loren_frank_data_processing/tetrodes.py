@@ -54,7 +54,7 @@ def get_LFP_dataframe(tetrode_key, animals):
         return pd.Series(
             data=lfp_data['data'][0, 0].squeeze().astype(float),
             index=lfp_time,
-            name='electric_potential')
+            name='{0}_{1:02d}_{2:02}_{3:03}'.format(*tetrode_key))
     except (FileNotFoundError, TypeError):
         logger.warning('Failed to load file: {0}'.format(
             get_LFP_filename(tetrode_key, animals)))

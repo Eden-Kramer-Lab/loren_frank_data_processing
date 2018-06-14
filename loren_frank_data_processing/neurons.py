@@ -73,7 +73,9 @@ def get_spikes_dataframe(neuron_key, animals):
         spike_time = pd.TimedeltaIndex(spike_time, unit='s', name='time')
     except IndexError:
         spike_time = []
-    return pd.Series(np.ones_like(spike_time, dtype=int), index=spike_time)
+    return pd.Series(
+        np.ones_like(spike_time, dtype=int), index=spike_time,
+        name='{0}_{1:02d}_{2:02}_{3:03}_{4:03}'.format(*neuron_key))
 
 
 def get_spike_indicator_dataframe(neuron_key, animals,
