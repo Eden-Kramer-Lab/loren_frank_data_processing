@@ -112,7 +112,6 @@ def get_data_structure(animal, day, file_type, variable):
         return None
 
 
-
 def reconstruct_time(start_time, n_samples, sampling_frequency):
     '''Reconstructs the recording time
 
@@ -130,10 +129,11 @@ def reconstruct_time(start_time, n_samples, sampling_frequency):
     time : pandas Index
 
     '''
-
     return pd.TimedeltaIndex(
-        start_time + np.arange(n_samples) / sampling_frequency,
-        unit='s', name='time')
+        start=pd.Timedelta(start_time, unit='s'),
+        end=pd.Timedelta(start_time + (n_samples - 1) / sampling_frequency,
+                         unit='s'),
+        periods=n_samples, unit='s', name='time')
 
 
 def _convert_to_dict(struct_array):
