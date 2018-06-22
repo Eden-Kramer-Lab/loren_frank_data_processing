@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 from scipy.io import loadmat
 
-from .core import logger
-from .tetrodes import get_trial_time
+from loren_frank_data_processing.core import get_data_filename, logger
+from loren_frank_data_processing.tetrodes import get_trial_time
 
 
 def get_multiunit_dataframe(tetrode_key, animals):
@@ -45,6 +45,45 @@ def get_multiunit_dataframe(tetrode_key, animals):
     return pd.DataFrame(
         multiunit_data, columns=multiunit_names,
         index=time).drop('time', axis=1)
+
+
+def get_multiunit_dataframe2(tetrode_key, animals):
+    '''Retrieve the multiunits for each tetrode given a tetrode key
+    This function retrieves data according to Demetris's format.
+
+    Parameters
+    ----------
+    tetrode_key : tuple
+        Unique key identifying the tetrode. Elements are
+        (animal_short_name, day, epoch, tetrode_number).
+    animals : dict of named-tuples
+        Dictionary containing information about the directory for each
+        animal. The key is the animal_short_name.
+
+    Returns
+    -------
+    multiunit_dataframe : pandas dataframe
+        The dataframe index is the time at which the multiunit occurred
+        (in seconds). THe other values are values that can be used as the
+        multiunits.
+
+    '''
+    animal, day, epoch, tetrode_number = tetrode_key
+    try:
+        multiunit_file = loadmat(
+            get_data_filename(animals[animal], day, 'marks'))
+        multiunit_data = multiunit_file['marks'][0, -1][0, epoch - 1][
+            0, tetrode_number - 1]
+
+        time = pd.TimedeltaIndex(multiunit_data['times'][0, 0].squeeze(),
+                                 unit='s', name='time')
+        multiunit = multiunit_data['marks'][0, 0].astype(np.float)
+        column_names = ['channel_{number + 1}_max'.format(number=number)
+                        for number in np.arange(multiunit.shape[1])]
+        return pd.DataFrame(multiunit, columns=column_names, index=time)
+    except (FileNotFoundError, TypeError):
+        logger.warning('Failed to load file: {0}'.format(
+            get_data_filename(animals[animal], day, 'marks')))
 
 
 def get_multiunit_filename(tetrode_key, animals):
@@ -98,8 +137,11 @@ def get_multiunit_indicator_dataframe(tetrode_key, animals,
 
     '''
     time = time_function(tetrode_key[:3], animals)
-    multiunit_dataframe = (get_multiunit_dataframe(tetrode_key, animals)
-                           .loc[time.min():time.max()])
+    try:
+        multiunit_dataframe = (get_multiunit_dataframe(tetrode_key, animals)
+                               .loc[time.min():time.max()])
+    except AttributeError:
+        multiunit_dataframe = get_multiunit_dataframe2(tetrode_key, animals)
     time_index = np.digitize(multiunit_dataframe.index.total_seconds(),
                              time.total_seconds())
     return (multiunit_dataframe.groupby(time[time_index]).mean()
