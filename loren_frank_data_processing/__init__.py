@@ -2,8 +2,8 @@
 from .core import Animal
 from .multiunit import (get_multiunit_dataframe, get_multiunit_dataframe2,
                         get_multiunit_indicator_dataframe)
-from .neurons import (get_spike_indicator_dataframe, get_spikes_dataframe,
-                      make_neuron_dataframe)
+from .neurons import (get_all_spike_indicators, get_spike_indicator_dataframe,
+                      get_spikes_dataframe, make_neuron_dataframe)
 from .position import (get_interpolated_position_dataframe,
                        get_position_dataframe, get_segments_df)
 from .ripples import (get_computed_consensus_ripple_times,
