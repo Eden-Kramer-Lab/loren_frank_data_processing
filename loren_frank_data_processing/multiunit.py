@@ -8,7 +8,7 @@ from .core import logger
 from .tetrodes import get_trial_time
 
 
-def get_multiunit_dataframe(tetrode_key, animals):
+def get_multiunit_dataframe(tetrode_key, animals, datastruct='by_tetrode'):
     '''Retrieve the multiunits for each tetrode given a tetrode key
 
     Parameters
@@ -29,25 +29,42 @@ def get_multiunit_dataframe(tetrode_key, animals):
 
     '''
     TO_NANOSECONDS = 1E5
-    try:
-        multiunit_file = loadmat(get_multiunit_filename(tetrode_key, animals))
-    except (FileNotFoundError, TypeError):
-        logger.warning('Failed to load file: {0}'.format(
-            get_multiunit_filename(tetrode_key, animals)))
-    multiunit_names = [
-        name[0][0].lower().replace(' ', '_')
-        for name in multiunit_file['filedata'][0, 0]['paramnames']]
-    multiunit_data = multiunit_file['filedata'][0, 0]['params']
-    time = pd.TimedeltaIndex(
-        multiunit_data[:, multiunit_names.index('time')].astype(int) *
-        TO_NANOSECONDS, unit='ns', name='time')
+    animal, day, epoch, ntrode_num = tetrode_key
 
-    return pd.DataFrame(
-        multiunit_data, columns=multiunit_names,
-        index=time).drop('time', axis=1)
+    if datastruct == 'by_tetrode':
+        try:
+            multiunit_file = loadmat(get_multiunit_filename(tetrode_key, animals, datastruct=datastruct))
+        except (FileNotFoundError, TypeError):
+            logger.warning('Failed to load file: {0}'.format(
+                get_multiunit_filename(tetrode_key, animals)))
+        multiunit_names = [
+            name[0][0].lower().replace(' ', '_')
+            for name in multiunit_file['filedata'][0, 0]['paramnames']]
+        multiunit_data = multiunit_file['filedata'][0, 0]['params']
+        time = pd.TimedeltaIndex(
+            multiunit_data[:, multiunit_names.index('time')].astype(int) *
+            TO_NANOSECONDS, unit='ns', name='time')
+        return pd.DataFrame(
+            multiunit_data, columns=multiunit_names,
+            index=time).drop('time', axis=1)
+    elif datastruct == 'by_day':
+        try:
+            # print(tetrode_key)
+            multiunit_file = loadmat(get_multiunit_filename(tetrode_key, animals, datastruct=datastruct), squeeze_me=True,struct_as_record=False)
+            multiunit_data = multiunit_file['marks'][epoch-1][ntrode_num-1].marks
+        except (FileNotFoundError, TypeError, AttributeError):
+            logger.warning('Failed to load marks for {filename} ntrode:{ntrode_num}'.format(filename=
+                get_multiunit_filename(tetrode_key, animals, datastruct=datastruct), ntrode_num=ntrode_num))
+            return
+
+        time = pd.TimedeltaIndex(multiunit_file['marks'][epoch-1][ntrode_num-1].times, unit='s', name='time')
+        num_channels = multiunit_data[0].shape[0]
+        multiunit_names = ['channel_{chan:02d}_max'.format(chan=chan) for chan in range(0,num_channels)]
+        return pd.DataFrame(
+            multiunit_data, columns=multiunit_names, index=time)
 
 
-def get_multiunit_filename(tetrode_key, animals):
+def get_multiunit_filename(tetrode_key, animals, datastruct='by_tetrode'):
     '''Path for the multiunits for a particular tetrode.
 
     Parameters
@@ -64,18 +81,24 @@ def get_multiunit_filename(tetrode_key, animals):
     multiunit_filename : str
 
     '''
-    animal, day, _, tetrode_number = tetrode_key
-    filename = ('{animal.short_name}marks{day:02d}-'
-                '{tetrode_number:02d}.mat').format(
-        animal=animals[animal],
-        day=day,
-        tetrode_number=tetrode_number
-    )
-    return join(animals[animal].directory, 'EEG', filename)
+    if datastruct == 'by_tetrode':
+        animal, day, _, tetrode_number = tetrode_key
+        filename = ('{animal.short_name}marks{day:02d}-'
+                    '{tetrode_number:02d}.mat').format(
+            animal=animals[animal],
+            day=day,
+            tetrode_number=tetrode_number
+        )
+        return join(animals[animal].directory, 'EEG', filename)
 
+    elif datastruct == 'by_day':
+        animal, day, epoch, tetrode_number = tetrode_key
+        print(tetrode_key)
+        filename = '{animal.short_name}marks{day:02d}.mat'.format(animal=animals[animal], day=day)
+        return join(animals[animal].directory, filename)
 
 def get_multiunit_indicator_dataframe(tetrode_key, animals,
-                                      time_function=get_trial_time):
+                                      time_function=get_trial_time, datastruct='by_tetrode'):
     '''A time series where a value indicates multiunit activity at that time and
     NaN indicates no multiunit activity at that time.
 
@@ -98,7 +121,7 @@ def get_multiunit_indicator_dataframe(tetrode_key, animals,
 
     '''
     time = time_function(tetrode_key[:3], animals)
-    multiunit_dataframe = (get_multiunit_dataframe(tetrode_key, animals)
+    multiunit_dataframe = (get_multiunit_dataframe(tetrode_key, animals, datastruct=datastruct)
                            .loc[time.min():time.max()])
     time_index = np.digitize(multiunit_dataframe.index.total_seconds(),
                              time.total_seconds())
