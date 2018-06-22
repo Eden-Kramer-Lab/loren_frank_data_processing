@@ -31,20 +31,20 @@ def get_multiunit_dataframe(tetrode_key, animals):
     TO_NANOSECONDS = 1E5
     try:
         multiunit_file = loadmat(get_multiunit_filename(tetrode_key, animals))
+        multiunit_names = [
+            name[0][0].lower().replace(' ', '_')
+            for name in multiunit_file['filedata'][0, 0]['paramnames']]
+        multiunit_data = multiunit_file['filedata'][0, 0]['params']
+        time = pd.TimedeltaIndex(
+            multiunit_data[:, multiunit_names.index('time')].astype(int) *
+            TO_NANOSECONDS, unit='ns', name='time')
+
+        return pd.DataFrame(
+            multiunit_data, columns=multiunit_names,
+            index=time).drop('time', axis=1)
     except (FileNotFoundError, TypeError):
         logger.warning('Failed to load file: {0}'.format(
             get_multiunit_filename(tetrode_key, animals)))
-    multiunit_names = [
-        name[0][0].lower().replace(' ', '_')
-        for name in multiunit_file['filedata'][0, 0]['paramnames']]
-    multiunit_data = multiunit_file['filedata'][0, 0]['params']
-    time = pd.TimedeltaIndex(
-        multiunit_data[:, multiunit_names.index('time')].astype(int) *
-        TO_NANOSECONDS, unit='ns', name='time')
-
-    return pd.DataFrame(
-        multiunit_data, columns=multiunit_names,
-        index=time).drop('time', axis=1)
 
 
 def get_multiunit_dataframe2(tetrode_key, animals):
