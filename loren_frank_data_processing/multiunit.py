@@ -144,5 +144,6 @@ def get_multiunit_indicator_dataframe(tetrode_key, animals,
         multiunit_dataframe = get_multiunit_dataframe2(tetrode_key, animals)
     time_index = np.digitize(multiunit_dataframe.index.total_seconds(),
                              time.total_seconds())
+    time_index = time_index[time_index < len(time) - 1]
     return (multiunit_dataframe.groupby(time[time_index]).mean()
             .reindex(index=time))
