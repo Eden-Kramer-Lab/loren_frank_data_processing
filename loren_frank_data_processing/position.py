@@ -34,18 +34,25 @@ def get_position_dataframe(epoch_key, animals):
     animal, day, epoch = epoch_key
     struct = get_data_structure(animals[animal], day, 'pos', 'pos')[epoch - 1]
     position_data = struct['data'][0, 0]
-    field_names = struct['fields'][0, 0].item().split()
-    NEW_NAMES = {'x': 'x_position',
-                 'y': 'y_position',
-                 'dir': 'head_direction',
-                 'vel': 'speed'}
+    FIELD_NAMES = ['time', 'x_position', 'y_position', 'head_direction',
+                   'speed', 'smoothed_x_position', 'smoothed_y_position',
+                   'smoothed_head_direction', 'smoothed_speed']
     time = pd.TimedeltaIndex(
-        position_data[:, field_names.index('time')], unit='s', name='time')
-    return (pd.DataFrame(
-        position_data, columns=field_names, index=time)
-        .rename(columns=NEW_NAMES)
-        .drop([name for name in field_names
-               if name not in NEW_NAMES], axis=1))
+        position_data[:, 0], unit='s', name='time')
+    n_cols = position_data.shape[1]
+
+    if n_cols > 5:
+        # Use the smoothed data
+        NEW_NAMES = {'smoothed_x_position': 'x_position',
+                     'smoothed_y_position': 'y_position',
+                     'smoothed_head_direction': 'head_direction',
+                     'smoothed_speed': 'speed'}
+        return (pd.DataFrame(
+            position_data[:, 5:], columns=FIELD_NAMES[5:], index=time)
+            .rename(columns=NEW_NAMES))
+    else:
+        return pd.DataFrame(position_data[:, 1:5], columns=FIELD_NAMES[1:5],
+                            index=time)
 
 
 def get_linear_position_structure(epoch_key, animals):
