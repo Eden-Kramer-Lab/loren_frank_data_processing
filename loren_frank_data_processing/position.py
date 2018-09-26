@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from scipy.ndimage.filters import gaussian_filter1d
 
 import networkx as nx
 
@@ -10,7 +11,35 @@ from .track_segment_classification import (calculate_linear_distance,
 from .well_traversal_classification import score_inbound_outbound, segment_path
 
 
-def get_position_dataframe(epoch_key, animals):
+def _get_pos_dataframe(epoch_key, animals):
+    animal, day, epoch = epoch_key
+    struct = get_data_structure(animals[animal], day, 'pos', 'pos')[epoch - 1]
+    position_data = struct['data'][0, 0]
+    FIELD_NAMES = ['time', 'x_position', 'y_position', 'head_direction',
+                   'speed', 'smoothed_x_position', 'smoothed_y_position',
+                   'smoothed_head_direction', 'smoothed_speed']
+    time = pd.TimedeltaIndex(
+        position_data[:, 0], unit='s', name='time')
+    n_cols = position_data.shape[1]
+
+    if n_cols > 5:
+        # Use the smoothed data if available
+        NEW_NAMES = {'smoothed_x_position': 'x_position',
+                     'smoothed_y_position': 'y_position',
+                     'smoothed_head_direction': 'head_direction',
+                     'smoothed_speed': 'speed'}
+        return (pd.DataFrame(
+            position_data[:, 5:], columns=FIELD_NAMES[5:], index=time)
+            .rename(columns=NEW_NAMES))
+    else:
+        return pd.DataFrame(position_data[:, 1:5], columns=FIELD_NAMES[1:5],
+                            index=time)
+
+
+def get_position_dataframe(epoch_key, animals, use_hmm=True,
+                           max_distance_from_well=5,
+                           route_euclidean_distance_scaling=1,
+                           min_distance_traveled=50):
     '''Returns a list of position dataframes with a length corresponding
      to the number of epochs in the epoch key -- either a tuple or a
     list of tuples with the format (animal, day, epoch_number)
@@ -31,31 +60,20 @@ def get_position_dataframe(epoch_key, animals):
         and speed.
 
     '''
-    animal, day, epoch = epoch_key
-    struct = get_data_structure(animals[animal], day, 'pos', 'pos')[epoch - 1]
-    position_data = struct['data'][0, 0]
-    FIELD_NAMES = ['time', 'x_position', 'y_position', 'head_direction',
-                   'speed', 'smoothed_x_position', 'smoothed_y_position',
-                   'smoothed_head_direction', 'smoothed_speed']
-    time = pd.TimedeltaIndex(
-        position_data[:, 0], unit='s', name='time')
-    n_cols = position_data.shape[1]
-
-    if n_cols > 5:
-        # Use the smoothed data
-        NEW_NAMES = {'smoothed_x_position': 'x_position',
-                     'smoothed_y_position': 'y_position',
-                     'smoothed_head_direction': 'head_direction',
-                     'smoothed_speed': 'speed'}
-        return (pd.DataFrame(
-            position_data[:, 5:], columns=FIELD_NAMES[5:], index=time)
-            .rename(columns=NEW_NAMES))
+    position_df = _get_pos_dataframe(epoch_key, animals)
+    if use_hmm:
+        position_df = _get_linear_position_hmm(
+            epoch_key, animals, position_df,
+            max_distance_from_well, route_euclidean_distance_scaling,
+            min_distance_traveled)
     else:
-        return pd.DataFrame(position_data[:, 1:5], columns=FIELD_NAMES[1:5],
-                            index=time)
+        linear_position_df = _get_linpos_dataframe(epoch_key, animals)
+        position_df = position_df.join(linear_position_df)
+
+    return position_df
 
 
-def get_linear_position_structure(epoch_key, animals):
+def _get_linpos_dataframe(epoch_key, animals):
     '''The time series of linearized (1D) positions of the animal for a given
     epoch.
 
@@ -77,19 +95,64 @@ def get_linear_position_structure(epoch_key, animals):
     struct = get_data_structure(
         animals[animal], day, 'linpos', 'linpos')[epoch - 1][0][0][
             'statematrix']
-    INCLUDE_FIELDS = ['traj', 'lindist']
+    INCLUDE_FIELDS = ['traj', 'lindist', 'linearVelocity']
     time = pd.TimedeltaIndex(struct['time'][0][0].flatten(), unit='s',
                              name='time')
-    new_names = {'time': 'time', 'traj': 'trajectory_category_ind',
-                 'lindist': 'linear_distance'}
-    data = {new_names[name]: struct[name][0][0].flatten()
+    new_names = {'time': 'time',
+                 'traj': 'labeled_segments',
+                 'lindist': 'linear_distance',
+                 'linearVelocity': 'linear_velocity'}
+    data = {new_names[name]: struct[name][0][0][:, 0]
             for name in struct.dtype.names
             if name in INCLUDE_FIELDS}
-    return pd.DataFrame(data, index=time)
+    position_df = pd.DataFrame(data, index=time)
+    return position_df.assign(linear_speed=np.abs(position_df.linear_velocity))
+
+
+def calculate_linear_velocity(linear_distance, smooth_duration=0.500,
+                              sampling_frequency=29):
+
+    smoothed_linear_distance = gaussian_filter1d(
+        linear_distance, smooth_duration * sampling_frequency)
+
+    smoothed_velocity = np.diff(smoothed_linear_distance) * sampling_frequency
+    return np.r_[smoothed_velocity[0], smoothed_velocity]
+
+
+def _get_linear_position_hmm(epoch_key, animals, position_df,
+                             max_distance_from_well=5,
+                             route_euclidean_distance_scaling=1,
+                             min_distance_traveled=50):
+    track_graph, center_well_id = make_track_graph(epoch_key, animals)
+    position = position_df.loc[:, ['x_position', 'y_position']].values
+    track_segment_id = classify_track_segments(
+        track_graph, position,
+        route_euclidean_distance_scaling=route_euclidean_distance_scaling)
+    position_df['linear_distance'] = calculate_linear_distance(
+        track_graph, track_segment_id, center_well_id, position)
+
+    segments_df, labeled_segments = get_segments_df(
+        epoch_key, animals, position_df, max_distance_from_well,
+        min_distance_traveled)
+
+    segments_df = pd.merge(
+        labeled_segments, segments_df, right_index=True,
+        left_on='labeled_segments', how='outer')
+    position_df = pd.concat((position_df, segments_df), axis=1)
+    position_df['linear_position'] = (
+        position_df.turn.map({np.nan: np.nan, 'Right': 1, 'Left': -1})
+        * position_df.linear_distance)
+    position_df['linear_velocity'] = calculate_linear_velocity(
+        position_df.linear_distance, smooth_duration=0.500,
+        sampling_frequency=29)
+    position_df['linear_speed'] = np.abs(position_df.linear_velocity)
+
+    return position_df
 
 
 def get_interpolated_position_dataframe(epoch_key, animals,
                                         time_function=get_trial_time,
+                                        use_hmm=True,
                                         max_distance_from_well=5,
                                         route_euclidean_distance_scaling=1,
                                         min_distance_traveled=50):
@@ -118,31 +181,15 @@ def get_interpolated_position_dataframe(epoch_key, animals,
 
     '''
     time = time_function(epoch_key, animals)
-    position_df = get_position_dataframe(epoch_key, animals)
-
-    track_graph, center_well_id = make_track_graph(epoch_key, animals)
-    position = position_df.loc[:, ['x_position', 'y_position']].values
-    track_segment_id = classify_track_segments(
-        track_graph, position,
-        route_euclidean_distance_scaling=route_euclidean_distance_scaling)
-    position_df['linear_distance'] = calculate_linear_distance(
-        track_graph, track_segment_id, center_well_id, position)
-
-    segments_df, labeled_segments = get_segments_df(
-        epoch_key, animals, max_distance_from_well, min_distance_traveled)
-
-    segments_df = pd.merge(
-        labeled_segments, segments_df, right_index=True,
-        left_on='labeled_segments', how='outer')
-    position_df = pd.concat((position_df, segments_df), axis=1)
-    position_df['linear_position'] = (
-        position_df.turn.map({np.nan: np.nan, 'Right': 1, 'Left': -1})
-        * position_df.linear_distance)
+    position_df = get_position_dataframe(
+        epoch_key, animals, use_hmm, max_distance_from_well,
+        route_euclidean_distance_scaling, min_distance_traveled)
 
     categorical_columns = ['labeled_segments', 'from_well', 'to_well', 'task',
                            'is_correct', 'turn']
     continuous_columns = ['head_direction', 'speed', 'linear_distance',
-                          'x_position', 'y_position', 'linear_position']
+                          'x_position', 'y_position', 'linear_position',
+                          'linear_speed', 'linear_velocity']
     position_categorical = (position_df
                             .drop(continuous_columns, axis=1)
                             .reindex(index=time, method='pad'))
@@ -156,10 +203,12 @@ def get_interpolated_position_dataframe(epoch_key, animals,
                              .interpolate(method='time')
                              .reindex(index=time))
     interpolated_position.loc[
-        interpolated_position.linear_distance < 0, 'linear_distance'] = 0
-    interpolated_position.loc[interpolated_position.speed < 0, 'speed'] = 0
+        interpolated_position.linear_distance < 0, 'linear_distance'] = 0.0
+    interpolated_position.loc[interpolated_position.speed < 0, 'speed'] = 0.0
+    interpolated_position.loc[
+        interpolated_position.linear_speed < 0, 'linear_speed'] = 0.0
 
-    return pd.concat([position_categorical, interpolated_position], axis=1)
+    return position_categorical.join(interpolated_position)
 
 
 def get_well_locations(epoch_key, animals):
@@ -241,10 +290,9 @@ def make_track_graph(epoch_key, animals):
     return track_graph, center_well_id
 
 
-def get_segments_df(epoch_key, animals, max_distance_from_well=5,
+def get_segments_df(epoch_key, animals, position_df, max_distance_from_well=5,
                     min_distance_traveled=50):
     well_locations = get_well_locations(epoch_key, animals)
-    position_df = get_position_dataframe(epoch_key, animals)
     position = position_df.loc[:, ['x_position', 'y_position']].values
     segments_df, labeled_segments = segment_path(
         position_df.index, position, well_locations, epoch_key, animals,
@@ -252,6 +300,6 @@ def get_segments_df(epoch_key, animals, max_distance_from_well=5,
     segments_df = score_inbound_outbound(
         segments_df, epoch_key, animals, min_distance_traveled)
     segments_df = segments_df.loc[
-            :, ['from_well', 'to_well', 'task', 'is_correct', 'turn']]
+        :, ['from_well', 'to_well', 'task', 'is_correct', 'turn']]
 
     return segments_df, labeled_segments
