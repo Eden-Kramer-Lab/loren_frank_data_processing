@@ -1,6 +1,7 @@
 # flake8: noqa
 from .core import Animal
-from .multiunit import (get_multiunit_dataframe, get_multiunit_dataframe2,
+from .multiunit import (get_all_multiunit_indicators, get_multiunit_dataframe,
+                        get_multiunit_dataframe2,
                         get_multiunit_indicator_dataframe)
 from .neurons import (get_all_spike_indicators, get_spike_indicator_dataframe,
                       get_spikes_dataframe, make_neuron_dataframe)

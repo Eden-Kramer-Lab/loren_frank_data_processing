@@ -147,3 +147,24 @@ def get_multiunit_indicator_dataframe(tetrode_key, animals,
     time_index[time_index >= len(time)] = len(time) - 1
     return (multiunit_dataframe.groupby(time[time_index]).mean()
             .reindex(index=time))
+
+
+def get_all_multiunit_indicators(tetrode_keys, animals,
+                                 time_function=get_trial_time):
+    time = time_function(tetrode_keys[0][:3], animals)
+    multiunit_dfs = []
+
+    for tetrode_key in tetrode_keys:
+        try:
+            df = (get_multiunit_dataframe(tetrode_key, animals)
+                  .loc[time.min():time.max()])
+        except AttributeError:
+            df = get_multiunit_dataframe(tetrode_key, animals)
+
+        time_index = np.digitize(df.index.total_seconds(),
+                                 time.total_seconds())
+        time_index[time_index >= len(time)] = len(time) - 1
+        multiunit_dfs.append(df.groupby(time[time_index]).mean()
+                             .reindex(index=time))
+
+    return pd.concat(multiunit_dfs, axis=1)
