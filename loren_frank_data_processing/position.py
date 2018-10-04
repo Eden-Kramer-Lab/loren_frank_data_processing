@@ -107,6 +107,18 @@ def _get_linpos_dataframe(epoch_key, animals):
             for name in struct.dtype.names
             if name in INCLUDE_FIELDS}
     position_df = pd.DataFrame(data, index=time)
+    SEGMENT_ID_TO_ARM_NAME = {
+        1: 'Center Arm',
+        2: 'Left Arm',
+        3: 'Left Arm',
+        4: 'Right Arm',
+        5: 'Right Arm',
+    }
+    position_df = position_df.assign(
+        arm_name=lambda df: df.track_segment_id.map(SEGMENT_ID_TO_ARM_NAME)
+    )
+    position_df['linear_position'] = _calulcate_linear_position(position_df)
+    position_df['linear_position2'] = _calulcate_linear_position2(position_df)
     return position_df.assign(linear_speed=np.abs(position_df.linear_velocity))
 
 
@@ -123,6 +135,20 @@ def calculate_linear_velocity(linear_distance, smooth_duration=0.500,
 def _calulcate_linear_position(position_df):
     return (position_df.turn.map({np.nan: np.nan, 'Right': 1, 'Left': -1})
             * position_df.linear_distance)
+
+
+def _calulcate_linear_position2(position_df):
+    '''Calculate linear distance but map the left arm to the
+    range(max_linear_distance, max_linear_distance + max_left_arm_distance).'''
+    linear_position2 = position_df.linear_distance.copy()
+    is_left = (position_df.arm_name == 'Left Arm')
+    left_distance = linear_position2[is_left]
+    left_distance -= left_distance.min()
+    left_distance += linear_position2.max() + np.spacing(1)
+    linear_position2[is_left] = left_distance
+    return linear_position2
+
+
 def _get_linear_position_hmm(epoch_key, animals, position_df,
                              max_distance_from_well=5,
                              route_euclidean_distance_scaling=1,
@@ -135,6 +161,14 @@ def _get_linear_position_hmm(epoch_key, animals, position_df,
     position_df['linear_distance'] = calculate_linear_distance(
         track_graph, track_segment_id, center_well_id, position)
     position_df['track_segment_id'] = track_segment_id
+    SEGMENT_ID_TO_ARM_NAME = {0.0: 'Center Arm',
+                              1.0: 'Left Arm',
+                              2.0: 'Right Arm',
+                              3.0: 'Left Arm',
+                              4.0: 'Right Arm'}
+    position_df = position_df.assign(
+        arm_name=lambda df: df.track_segment_id.map(SEGMENT_ID_TO_ARM_NAME)
+    )
 
     segments_df, labeled_segments = get_segments_df(
         epoch_key, animals, position_df, max_distance_from_well,
@@ -145,6 +179,7 @@ def _get_linear_position_hmm(epoch_key, animals, position_df,
         left_on='labeled_segments', how='outer')
     position_df = pd.concat((position_df, segments_df), axis=1)
     position_df['linear_position'] = _calulcate_linear_position(position_df)
+    position_df['linear_position2'] = _calulcate_linear_position2(position_df)
     position_df['linear_velocity'] = calculate_linear_velocity(
         position_df.linear_distance, smooth_duration=0.500,
         sampling_frequency=29)
@@ -187,7 +222,8 @@ def get_interpolated_position_dataframe(epoch_key, animals,
     position_df = get_position_dataframe(
         epoch_key, animals, use_hmm, max_distance_from_well,
         route_euclidean_distance_scaling, min_distance_traveled)
-    position_df = position_df.drop('linear_position', axis=1)
+    position_df = position_df.drop(
+        ['linear_position', 'linear_position2'], axis=1)
 
     CONTINUOUS_COLUMNS = ['head_direction', 'speed', 'linear_distance',
                           'x_position', 'y_position',
@@ -199,7 +235,8 @@ def get_interpolated_position_dataframe(epoch_key, animals,
         position_categorical.is_correct.fillna(False))
 
     CATEGORICAL_COLUMNS = ['labeled_segments', 'from_well', 'to_well', 'task',
-                           'is_correct', 'turn', 'track_segment_id']
+                           'is_correct', 'turn', 'track_segment_id',
+                           'arm_name']
     position_continuous = position_df.drop(CATEGORICAL_COLUMNS, axis=1,
                                            errors='ignore')
     new_index = pd.Index(np.unique(np.concatenate(
@@ -217,6 +254,8 @@ def get_interpolated_position_dataframe(epoch_key, animals,
     position_info = position_categorical.join(interpolated_position)
 
     position_info['linear_position'] = _calulcate_linear_position(
+        position_info)
+    position_info['linear_position2'] = _calulcate_linear_position2(
         position_info)
 
     return position_info
@@ -278,9 +317,11 @@ def make_track_graph(epoch_key, animals):
     '''
     track_segments, center_well_position = get_track_segments(
         epoch_key, animals)
-    nodes = np.unique(track_segments.reshape((-1, 2)), axis=0)
+    nodes = track_segments.copy().reshape((-1, 2))
+    _, unique_ind = np.unique(nodes, return_index=True, axis=0)
+    nodes = nodes[np.sort(unique_ind)]
 
-    edges = np.zeros(track_segments.shape[:2], dtype=int)
+    edges = np.zeros(track_segments.shape[:2], dtype=np.int)
     for node_id, node in enumerate(nodes):
         edge_ind = np.nonzero(np.isin(track_segments, node).sum(axis=2) > 1)
         edges[edge_ind] = node_id
