@@ -120,6 +120,9 @@ def calculate_linear_velocity(linear_distance, smooth_duration=0.500,
     return np.r_[smoothed_velocity[0], smoothed_velocity]
 
 
+def _calulcate_linear_position(position_df):
+    return (position_df.turn.map({np.nan: np.nan, 'Right': 1, 'Left': -1})
+            * position_df.linear_distance)
 def _get_linear_position_hmm(epoch_key, animals, position_df,
                              max_distance_from_well=5,
                              route_euclidean_distance_scaling=1,
@@ -141,9 +144,7 @@ def _get_linear_position_hmm(epoch_key, animals, position_df,
         labeled_segments, segments_df, right_index=True,
         left_on='labeled_segments', how='outer')
     position_df = pd.concat((position_df, segments_df), axis=1)
-    position_df['linear_position'] = (
-        position_df.turn.map({np.nan: np.nan, 'Right': 1, 'Left': -1})
-        * position_df.linear_distance)
+    position_df['linear_position'] = _calulcate_linear_position(position_df)
     position_df['linear_velocity'] = calculate_linear_velocity(
         position_df.linear_distance, smooth_duration=0.500,
         sampling_frequency=29)
@@ -186,12 +187,13 @@ def get_interpolated_position_dataframe(epoch_key, animals,
     position_df = get_position_dataframe(
         epoch_key, animals, use_hmm, max_distance_from_well,
         route_euclidean_distance_scaling, min_distance_traveled)
+    position_df = position_df.drop('linear_position', axis=1)
 
-    continuous_columns = ['head_direction', 'speed', 'linear_distance',
-                          'x_position', 'y_position', 'linear_position',
+    CONTINUOUS_COLUMNS = ['head_direction', 'speed', 'linear_distance',
+                          'x_position', 'y_position',
                           'linear_speed', 'linear_velocity']
     position_categorical = (position_df
-                            .drop(continuous_columns, axis=1)
+                            .drop(CONTINUOUS_COLUMNS, axis=1, errors='ignore')
                             .reindex(index=time, method='pad'))
     position_categorical['is_correct'] = (
         position_categorical.is_correct.fillna(False))
@@ -212,7 +214,12 @@ def get_interpolated_position_dataframe(epoch_key, animals,
     interpolated_position.loc[
         interpolated_position.linear_speed < 0, 'linear_speed'] = 0.0
 
-    return position_categorical.join(interpolated_position)
+    position_info = position_categorical.join(interpolated_position)
+
+    position_info['linear_position'] = _calulcate_linear_position(
+        position_info)
+
+    return position_info
 
 
 def get_well_locations(epoch_key, animals):
