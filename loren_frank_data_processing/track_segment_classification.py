@@ -246,22 +246,22 @@ def viterbi(initial_conditions, state_transition, likelihood):
 
     '''
     is_nan = np.any(np.isnan(likelihood), axis=1)
-    likelihood = likelihood.copy()[~is_nan]
-    state_transition = state_transition.copy()[~is_nan]
+    log_likelihood = np.log(likelihood.copy()[~is_nan])
+    state_transition = np.log(state_transition.copy()[~is_nan])
 
     n_time, n_states = likelihood.shape
     posterior = np.zeros((n_time, n_states))
     max_state_ind = np.zeros((n_time, n_states), dtype=np.int)
 
     # initialization
-    posterior[0] = np.log(initial_conditions) + np.log(likelihood[0])
+    posterior[0] = np.log(initial_conditions) + log_likelihood[0]
 
     # recursion
     for time_ind in range(1, n_time):
-        prior = posterior[time_ind - 1] + np.log(state_transition[time_ind])
+        prior = posterior[time_ind - 1] + state_transition[time_ind]
         max_state_ind[time_ind] = prior.argmax(axis=1)
         posterior[time_ind] = prior[np.arange(
-            n_states), max_state_ind[time_ind]] + np.log(likelihood[time_ind])
+            n_states), max_state_ind[time_ind]] + log_likelihood[time_ind]
 
     # termination
     most_probable_state_ind = np.zeros((n_time,), dtype=np.int)
