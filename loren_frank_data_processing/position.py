@@ -257,8 +257,9 @@ def get_track_segments(epoch_key, animals):
     track_segments = [np.stack(((arm[:-1, :, 0], arm[1:, :, 0])), axis=1)
                       for arm in linearcoord]
     center_well_position = track_segments[0][0][0]
-    return (np.unique(np.concatenate(track_segments), axis=0),
-            center_well_position)
+    track_segments = np.concatenate(track_segments)
+    _, unique_ind = np.unique(track_segments, return_index=True, axis=0)
+    return track_segments[np.sort(unique_ind)], center_well_position
 
 
 def make_track_graph(epoch_key, animals):
