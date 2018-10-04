@@ -118,6 +118,7 @@ def route_distance(candidates_t_1, candidates_t, track_graph):
     route_distance : ndarray, shape (n_segments, n_segments)
 
     '''
+    # TODO: speedup function. This takes the most time
     n_segments = len(track_graph.edges)
     if np.any(np.isnan(candidates_t) | np.isnan(candidates_t)):
         return np.full((n_segments, n_segments), np.nan)
