@@ -95,13 +95,14 @@ def _get_linpos_dataframe(epoch_key, animals):
     struct = get_data_structure(
         animals[animal], day, 'linpos', 'linpos')[epoch - 1][0][0][
             'statematrix']
-    INCLUDE_FIELDS = ['traj', 'lindist', 'linearVelocity']
+    INCLUDE_FIELDS = ['traj', 'lindist', 'linearVelocity', 'segmentIndex']
     time = pd.TimedeltaIndex(struct['time'][0][0].flatten(), unit='s',
                              name='time')
     new_names = {'time': 'time',
                  'traj': 'labeled_segments',
                  'lindist': 'linear_distance',
-                 'linearVelocity': 'linear_velocity'}
+                 'linearVelocity': 'linear_velocity',
+                 'segmentIndex': 'track_segment_id'}
     data = {new_names[name]: struct[name][0][0][:, 0]
             for name in struct.dtype.names
             if name in INCLUDE_FIELDS}
@@ -130,6 +131,7 @@ def _get_linear_position_hmm(epoch_key, animals, position_df,
         route_euclidean_distance_scaling=route_euclidean_distance_scaling)
     position_df['linear_distance'] = calculate_linear_distance(
         track_graph, track_segment_id, center_well_id, position)
+    position_df['track_segment_id'] = track_segment_id
 
     segments_df, labeled_segments = get_segments_df(
         epoch_key, animals, position_df, max_distance_from_well,
@@ -185,8 +187,6 @@ def get_interpolated_position_dataframe(epoch_key, animals,
         epoch_key, animals, use_hmm, max_distance_from_well,
         route_euclidean_distance_scaling, min_distance_traveled)
 
-    categorical_columns = ['labeled_segments', 'from_well', 'to_well', 'task',
-                           'is_correct', 'turn']
     continuous_columns = ['head_direction', 'speed', 'linear_distance',
                           'x_position', 'y_position', 'linear_position',
                           'linear_speed', 'linear_velocity']
@@ -195,7 +195,11 @@ def get_interpolated_position_dataframe(epoch_key, animals,
                             .reindex(index=time, method='pad'))
     position_categorical['is_correct'] = (
         position_categorical.is_correct.fillna(False))
-    position_continuous = position_df.drop(categorical_columns, axis=1)
+
+    CATEGORICAL_COLUMNS = ['labeled_segments', 'from_well', 'to_well', 'task',
+                           'is_correct', 'turn', 'track_segment_id']
+    position_continuous = position_df.drop(CATEGORICAL_COLUMNS, axis=1,
+                                           errors='ignore')
     new_index = pd.Index(np.unique(np.concatenate(
         (position_continuous.index, time))), name='time')
     interpolated_position = (position_continuous
