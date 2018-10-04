@@ -39,7 +39,8 @@ def _get_pos_dataframe(epoch_key, animals):
 def get_position_dataframe(epoch_key, animals, use_hmm=True,
                            max_distance_from_well=5,
                            route_euclidean_distance_scaling=1,
-                           min_distance_traveled=50):
+                           min_distance_traveled=50,
+                           sensor_std_dev=10):
     '''Returns a list of position dataframes with a length corresponding
      to the number of epochs in the epoch key -- either a tuple or a
     list of tuples with the format (animal, day, epoch_number)
@@ -65,7 +66,7 @@ def get_position_dataframe(epoch_key, animals, use_hmm=True,
         position_df = _get_linear_position_hmm(
             epoch_key, animals, position_df,
             max_distance_from_well, route_euclidean_distance_scaling,
-            min_distance_traveled)
+            min_distance_traveled, sensor_std_dev)
     else:
         linear_position_df = _get_linpos_dataframe(epoch_key, animals)
         position_df = position_df.join(linear_position_df)
@@ -154,12 +155,14 @@ def _calulcate_linear_position2(position_df):
 def _get_linear_position_hmm(epoch_key, animals, position_df,
                              max_distance_from_well=5,
                              route_euclidean_distance_scaling=1,
-                             min_distance_traveled=50):
+                             min_distance_traveled=50,
+                             sensor_std_dev=10):
     track_graph, center_well_id = make_track_graph(epoch_key, animals)
     position = position_df.loc[:, ['x_position', 'y_position']].values
     track_segment_id = classify_track_segments(
         track_graph, position,
-        route_euclidean_distance_scaling=route_euclidean_distance_scaling)
+        route_euclidean_distance_scaling=route_euclidean_distance_scaling,
+        sensor_std_dev=sensor_std_dev)
     position_df['linear_distance'] = calculate_linear_distance(
         track_graph, track_segment_id, center_well_id, position)
     position_df['track_segment_id'] = track_segment_id
@@ -195,7 +198,8 @@ def get_interpolated_position_dataframe(epoch_key, animals,
                                         use_hmm=True,
                                         max_distance_from_well=5,
                                         route_euclidean_distance_scaling=1,
-                                        min_distance_traveled=50):
+                                        min_distance_traveled=50,
+                                        sensor_std_dev=10):
     '''Gives the interpolated position of animal for a given epoch.
 
     Defaults to interpolating the position to the LFP time. Can use the
@@ -213,6 +217,9 @@ def get_interpolated_position_dataframe(epoch_key, animals,
         the time the LFPs are sampled at.
     max_distance_from_well : float, optional
     route_euclidean_distance_scaling : float, optional
+        How much to prefer route distances between successive time points
+        that are closer to the euclidean distance. Smaller numbers mean the
+        route distance is more likely to be close to the euclidean distance.
     min_distance_traveled : float, optional
 
     Returns
@@ -223,7 +230,8 @@ def get_interpolated_position_dataframe(epoch_key, animals,
     time = time_function(epoch_key, animals)
     position_df = get_position_dataframe(
         epoch_key, animals, use_hmm, max_distance_from_well,
-        route_euclidean_distance_scaling, min_distance_traveled)
+        route_euclidean_distance_scaling, min_distance_traveled,
+        sensor_std_dev)
     position_df = position_df.drop(
         ['linear_position', 'linear_position2'], axis=1)
 
