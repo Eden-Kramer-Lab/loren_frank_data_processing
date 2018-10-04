@@ -133,6 +133,8 @@ def calculate_linear_velocity(linear_distance, smooth_duration=0.500,
 
 
 def _calulcate_linear_position(position_df):
+    '''Calculate linear distance but map left turns onto the negativie axis and
+    right turns onto the positive axis'''
     return (position_df.turn.map({np.nan: np.nan, 'Right': 1, 'Left': -1})
             * position_df.linear_distance)
 
