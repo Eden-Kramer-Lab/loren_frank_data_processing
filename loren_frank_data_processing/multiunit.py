@@ -2,6 +2,7 @@ from os.path import join
 
 import numpy as np
 import pandas as pd
+import xarray as xr
 from scipy.io import loadmat
 
 from loren_frank_data_processing.core import get_data_filename, logger
@@ -165,6 +166,9 @@ def get_all_multiunit_indicators(tetrode_keys, animals,
                                  time.total_seconds())
         time_index[time_index >= len(time)] = len(time) - 1
         multiunit_dfs.append(df.groupby(time[time_index]).mean()
-                             .reindex(index=time))
+                             .reindex(index=time)
+                             .to_xarray()
+                             .to_array('features'))
 
-    return pd.concat(multiunit_dfs, axis=1)
+    return (xr.concat(multiunit_dfs, dim='tetrodes')
+            .transpose('time', 'features', 'tetrodes'))
