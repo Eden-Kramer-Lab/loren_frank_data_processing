@@ -188,7 +188,7 @@ def get_trial_time(epoch_key, animals):
         if lfp_df is not None:
             break
 
-    return lfp_df.index
+    return lfp_df.index.rename('time')
 
 
 def get_LFPs(tetrode_keys, animals):
