@@ -114,12 +114,17 @@ def get_all_spike_indicators(neuron_keys, animals,
     time = time_function(neuron_keys[0][:3], animals)
     spikes_dfs = [get_spikes_dataframe(neuron_key, animals)
                   for neuron_key in neuron_keys]
-    return pd.concat(
-        (spikes_df
-         .groupby(time[np.digitize(spikes_df.index.total_seconds(),
-                                   time.total_seconds())]).sum()
-         .reindex(index=time, fill_value=0)
-         for spikes_df in spikes_dfs), axis=1)
+    n_time = time.size
+    for ind, spikes_df in enumerate(spikes_dfs):
+        spike_time_ind = np.digitize(
+            spikes_df.index.total_seconds(), time.total_seconds())
+        spike_time_ind = spike_time_ind[spike_time_ind < n_time]
+        spikes_dfs[ind] = (spikes_df
+                           .iloc[spike_time_ind < n_time]
+                           .groupby(time[spike_time_ind]).sum()
+                           .reindex(index=time, fill_value=0))
+
+    return pd.concat(spikes_dfs, axis=1)
 
 
 def convert_neuron_epoch_to_dataframe(tetrodes_in_epoch, animal, day,
