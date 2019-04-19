@@ -160,7 +160,8 @@ def get_all_multiunit_indicators(tetrode_keys, animals,
             df = (get_multiunit_dataframe(tetrode_key, animals)
                   .loc[time.min():time.max()])
         except AttributeError:
-            df = get_multiunit_dataframe(tetrode_key, animals)
+            df = (get_multiunit_dataframe2(tetrode_key, animals)
+                  .loc[time.min():time.max()])
 
         time_index = np.digitize(df.index.total_seconds(),
                                  time.total_seconds())
