@@ -74,20 +74,19 @@ def make_tetrode_dataframe(animals):
     tetrode_infomation : pandas.DataFrame
 
     '''
-    tetrode_file_names = [
-        (get_tetrode_info_path(animal), animal.short_name)
-        for animal in animals.values()]
-    tetrode_data = [(loadmat(file_name), animal)
-                    for file_name, animal in tetrode_file_names]
+    tetrode_info = []
+    for animal in animals.values():
+        file_name = get_tetrode_info_path(animal)
+        for day_ind, day in enumerate(loadmat(file_name)['tetinfo'].T):
+            try:
+                for epoch_ind, epoch in enumerate(day[0].T):
+                    epoch_key = animal.short_name, day_ind + 1, epoch_ind + 1
+                    tetrode_info.append(
+                        convert_tetrode_epoch_to_dataframe(epoch, epoch_key))
+            except IndexError:
+                pass
 
-    # Make a dictionary with (animal, day, epoch) as the keys
-    return pd.concat(
-        [convert_tetrode_epoch_to_dataframe(
-            epoch, (animal, day_ind + 1, epoch_ind + 1))
-         for info, animal in tetrode_data
-         for day_ind, day in enumerate(info['tetinfo'].T)
-         for epoch_ind, epoch in enumerate(day[0].T)
-         ]).sort_index()
+    return pd.concat(tetrode_info).sort_index()
 
 
 def get_LFP_filename(tetrode_key, animals):
