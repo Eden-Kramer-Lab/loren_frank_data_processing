@@ -40,7 +40,8 @@ def get_position_dataframe(epoch_key, animals, use_hmm=True,
                            max_distance_from_well=5,
                            route_euclidean_distance_scaling=1,
                            min_distance_traveled=50,
-                           sensor_std_dev=10):
+                           sensor_std_dev=10,
+                           spacing=np.spacing(1)):
     '''Returns a list of position dataframes with a length corresponding
      to the number of epochs in the epoch key -- either a tuple or a
     list of tuples with the format (animal, day, epoch_number)
@@ -66,7 +67,8 @@ def get_position_dataframe(epoch_key, animals, use_hmm=True,
         position_df = _get_linear_position_hmm(
             epoch_key, animals, position_df,
             max_distance_from_well, route_euclidean_distance_scaling,
-            min_distance_traveled, sensor_std_dev)
+            min_distance_traveled, sensor_std_dev,
+            spacing=spacing)
     else:
         linear_position_df = _get_linpos_dataframe(epoch_key, animals)
         position_df = position_df.join(linear_position_df)
@@ -140,14 +142,14 @@ def _calulcate_linear_position(position_df):
             * position_df.linear_distance)
 
 
-def _calulcate_linear_position2(position_df):
+def _calulcate_linear_position2(position_df, spacing=5):
     '''Calculate linear distance but map the left arm to the
     range(max_linear_distance, max_linear_distance + max_left_arm_distance).'''
     linear_position2 = position_df.linear_distance.copy()
     is_left = (position_df.arm_name == 'Left Arm')
     left_distance = linear_position2[is_left]
     left_distance -= left_distance.min()
-    left_distance += linear_position2.max() + np.spacing(1)
+    left_distance += linear_position2.max() + spacing
     linear_position2[is_left] = left_distance
     return linear_position2
 
@@ -156,7 +158,8 @@ def _get_linear_position_hmm(epoch_key, animals, position_df,
                              max_distance_from_well=5,
                              route_euclidean_distance_scaling=1,
                              min_distance_traveled=50,
-                             sensor_std_dev=10):
+                             sensor_std_dev=10,
+                             spacing=5):
     track_graph, center_well_id = make_track_graph(epoch_key, animals)
     position = position_df.loc[:, ['x_position', 'y_position']].values
     track_segment_id = classify_track_segments(
@@ -184,7 +187,8 @@ def _get_linear_position_hmm(epoch_key, animals, position_df,
         left_on='labeled_segments', how='outer')
     position_df = pd.concat((position_df, segments_df), axis=1)
     position_df['linear_position'] = _calulcate_linear_position(position_df)
-    position_df['linear_position2'] = _calulcate_linear_position2(position_df)
+    position_df['linear_position2'] = _calulcate_linear_position2(
+        position_df, spacing)
     position_df['linear_velocity'] = calculate_linear_velocity(
         position_df.linear_distance, smooth_duration=0.500,
         sampling_frequency=29)
@@ -199,7 +203,8 @@ def get_interpolated_position_dataframe(epoch_key, animals,
                                         max_distance_from_well=5,
                                         route_euclidean_distance_scaling=1,
                                         min_distance_traveled=50,
-                                        sensor_std_dev=10):
+                                        sensor_std_dev=10,
+                                        spacing=5):
     '''Gives the interpolated position of animal for a given epoch.
 
     Defaults to interpolating the position to the LFP time. Can use the
@@ -231,7 +236,7 @@ def get_interpolated_position_dataframe(epoch_key, animals,
     position_df = get_position_dataframe(
         epoch_key, animals, use_hmm, max_distance_from_well,
         route_euclidean_distance_scaling, min_distance_traveled,
-        sensor_std_dev)
+        sensor_std_dev, spacing=spacing)
     position_df = position_df.drop(
         ['linear_position', 'linear_position2'], axis=1)
 
