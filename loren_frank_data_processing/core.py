@@ -73,7 +73,7 @@ def get_epochs(animal, day):
             get_data_filename(animal, day, 'task'))
         return [(animal, day, ind + 1)
                 for ind, epoch in enumerate(task_file['task'][0, -1][0])]
-    except (IOError, TypeError) as err:
+    except (IOError, TypeError):
         logger.warn('Failed to load file {0}'.format(
             get_data_filename(animal, day, 'task')))
         exit()
