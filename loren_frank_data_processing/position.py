@@ -1,8 +1,7 @@
+import networkx as nx
 import numpy as np
 import pandas as pd
 from scipy.ndimage.filters import gaussian_filter1d
-
-import networkx as nx
 
 from .core import get_data_structure
 from .tetrodes import get_trial_time
@@ -142,14 +141,23 @@ def _calulcate_linear_position(position_df):
             * position_df.linear_distance)
 
 
-def _calulcate_linear_position2(position_df, spacing=5):
+def _calulcate_linear_position2(position_df, spacing=15):
     '''Calculate linear distance but map the left arm to the
     range(max_linear_distance, max_linear_distance + max_left_arm_distance).'''
     linear_position2 = position_df.linear_distance.copy()
+
+    is_center = (position_df.arm_name == 'Center Arm')
+
+    is_right = (position_df.arm_name == 'Right Arm')
+    right_distance = linear_position2[is_right]
+    right_distance -= right_distance.min()
+    right_distance += linear_position2[is_center].max() + spacing
+    linear_position2[is_right] = right_distance
+
     is_left = (position_df.arm_name == 'Left Arm')
     left_distance = linear_position2[is_left]
     left_distance -= left_distance.min()
-    left_distance += linear_position2.max() + spacing
+    left_distance += linear_position2[is_right].max() + spacing
     linear_position2[is_left] = left_distance
     return linear_position2
 
@@ -159,7 +167,7 @@ def _get_linear_position_hmm(epoch_key, animals, position_df,
                              route_euclidean_distance_scaling=1,
                              min_distance_traveled=50,
                              sensor_std_dev=10,
-                             spacing=5):
+                             spacing=15):
     track_graph, center_well_id = make_track_graph(epoch_key, animals)
     position = position_df.loc[:, ['x_position', 'y_position']].values
     track_segment_id = classify_track_segments(
@@ -204,7 +212,7 @@ def get_interpolated_position_dataframe(epoch_key, animals,
                                         route_euclidean_distance_scaling=1,
                                         min_distance_traveled=50,
                                         sensor_std_dev=10,
-                                        spacing=5):
+                                        spacing=15):
     '''Gives the interpolated position of animal for a given epoch.
 
     Defaults to interpolating the position to the LFP time. Can use the
