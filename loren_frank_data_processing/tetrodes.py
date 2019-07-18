@@ -4,7 +4,15 @@ import numpy as np
 import pandas as pd
 from scipy.io import loadmat
 
-from .core import _convert_to_dict, logger, reconstruct_time
+from .core import logger, reconstruct_time
+
+
+def _convert_to_dict(struct_array):
+    try:
+        return {name: struct_array[name].item()
+                for name in struct_array.dtype.names}
+    except TypeError:
+        return {}
 
 
 def get_tetrode_info_path(animal):
@@ -77,16 +85,17 @@ def make_tetrode_dataframe(animals):
     tetrode_info = []
     for animal in animals.values():
         file_name = get_tetrode_info_path(animal)
-        for day_ind, day in enumerate(loadmat(file_name)['tetinfo'].T):
+        for day_ind, day in enumerate(
+                loadmat(file_name, squeeze_me=True)['tetinfo']):
             try:
-                for epoch_ind, epoch in enumerate(day[0].T):
+                for epoch_ind, epoch in enumerate(day):
                     epoch_key = animal.short_name, day_ind + 1, epoch_ind + 1
                     tetrode_info.append(
                         convert_tetrode_epoch_to_dataframe(epoch, epoch_key))
             except IndexError:
                 pass
 
-    return pd.concat(tetrode_info).sort_index()
+    return pd.concat(tetrode_info, sort=True)
 
 
 def get_LFP_filename(tetrode_key, animals):
@@ -139,7 +148,7 @@ def convert_tetrode_epoch_to_dataframe(tetrodes_in_epoch, epoch_key):
     '''
     animal, day, epoch = epoch_key
     tetrode_dict_list = [_convert_to_dict(
-        tetrode) for tetrode in tetrodes_in_epoch[0][0]]
+        tetrode) for tetrode in tetrodes_in_epoch]
     try:
         return (pd.DataFrame(tetrode_dict_list)
                   .assign(numcells=lambda x: x['numcells'])
