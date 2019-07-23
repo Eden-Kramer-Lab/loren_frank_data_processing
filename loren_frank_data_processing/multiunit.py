@@ -39,10 +39,11 @@ def get_multiunit_dataframe(tetrode_key, animals):
         time = pd.TimedeltaIndex(
             multiunit_data[:, multiunit_names.index('time')].astype(int) *
             TO_NANOSECONDS, unit='ns', name='time')
+        is_duplicated = time.duplicated()
 
         return pd.DataFrame(
             multiunit_data, columns=multiunit_names,
-            index=time).drop('time', axis=1)
+            index=time).drop('time', axis=1).loc[~is_duplicated]
     except (FileNotFoundError, TypeError):
         logger.warning('Failed to load file: {0}'.format(
             get_multiunit_filename(tetrode_key, animals)))
