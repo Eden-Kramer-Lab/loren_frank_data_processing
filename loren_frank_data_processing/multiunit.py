@@ -41,9 +41,11 @@ def get_multiunit_dataframe(tetrode_key, animals):
             TO_NANOSECONDS, unit='ns', name='time')
         is_duplicated = time.duplicated()
 
-        return pd.DataFrame(
-            multiunit_data, columns=multiunit_names,
-            index=time).drop('time', axis=1).loc[~is_duplicated]
+        return (pd.DataFrame(multiunit_data, columns=multiunit_names,
+                             index=time)
+                .drop('time', axis=1)
+                .loc[~is_duplicated]
+                .sort_index())
     except (FileNotFoundError, TypeError):
         logger.warning('Failed to load file: {0}'.format(
             get_multiunit_filename(tetrode_key, animals)))
@@ -82,7 +84,10 @@ def get_multiunit_dataframe2(tetrode_key, animals):
         multiunit = multiunit_data['marks'][0, 0].astype(np.float)
         column_names = ['channel_{number}_max'.format(number=number + 1)
                         for number in np.arange(multiunit.shape[1])]
-        return pd.DataFrame(multiunit, columns=column_names, index=time)
+        is_duplicated = time.duplicated()
+        return (pd.DataFrame(multiunit, columns=column_names, index=time)
+                .loc[~is_duplicated]
+                .sort_index())
     except (FileNotFoundError, TypeError):
         logger.warning('Failed to load file: {0}'.format(
             get_data_filename(animals[animal], day, 'marks')))
