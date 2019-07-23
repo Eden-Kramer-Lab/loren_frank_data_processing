@@ -250,7 +250,7 @@ def viterbi(initial_conditions, state_transition, likelihood):
     log_likelihood = np.log(likelihood.copy()[~is_nan])
     state_transition = np.log(state_transition.copy()[~is_nan])
 
-    n_time, n_states = likelihood.shape
+    n_time, n_states = log_likelihood.shape
     posterior = np.zeros((n_time, n_states))
     max_state_ind = np.zeros((n_time, n_states), dtype=np.int)
 
