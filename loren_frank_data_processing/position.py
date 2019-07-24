@@ -40,7 +40,7 @@ def get_position_dataframe(epoch_key, animals, use_hmm=True,
                            route_euclidean_distance_scaling=1,
                            min_distance_traveled=50,
                            sensor_std_dev=10,
-                           spacing=np.spacing(1)):
+                           spacing=15):
     '''Returns a list of position dataframes with a length corresponding
      to the number of epochs in the epoch key -- either a tuple or a
     list of tuples with the format (animal, day, epoch_number)
@@ -69,13 +69,14 @@ def get_position_dataframe(epoch_key, animals, use_hmm=True,
             min_distance_traveled, sensor_std_dev,
             spacing=spacing)
     else:
-        linear_position_df = _get_linpos_dataframe(epoch_key, animals)
+        linear_position_df = _get_linpos_dataframe(
+            epoch_key, animals, spacing=spacing)
         position_df = position_df.join(linear_position_df)
 
     return position_df
 
 
-def _get_linpos_dataframe(epoch_key, animals):
+def _get_linpos_dataframe(epoch_key, animals, spacing=15):
     '''The time series of linearized (1D) positions of the animal for a given
     epoch.
 
@@ -120,7 +121,8 @@ def _get_linpos_dataframe(epoch_key, animals):
         arm_name=lambda df: df.track_segment_id.map(SEGMENT_ID_TO_ARM_NAME)
     )
     position_df['linear_position'] = _calulcate_linear_position(position_df)
-    position_df['linear_position2'] = _calulcate_linear_position2(position_df)
+    position_df['linear_position2'] = _calulcate_linear_position2(
+        position_df, spacing=spacing)
     return position_df.assign(linear_speed=np.abs(position_df.linear_velocity))
 
 
@@ -199,7 +201,7 @@ def _get_linear_position_hmm(epoch_key, animals, position_df,
     position_df = pd.concat((position_df, segments_df), axis=1)
     position_df['linear_position'] = _calulcate_linear_position(position_df)
     position_df['linear_position2'] = _calulcate_linear_position2(
-        position_df, spacing)
+        position_df, spacing=spacing)
     position_df['linear_velocity'] = calculate_linear_velocity(
         position_df.linear_distance, smooth_duration=0.500,
         sampling_frequency=29)
@@ -282,7 +284,7 @@ def get_interpolated_position_dataframe(epoch_key, animals,
     position_info['linear_position'] = _calulcate_linear_position(
         position_info)
     position_info['linear_position2'] = _calulcate_linear_position2(
-        position_info)
+        position_info, spacing=spacing)
 
     return position_info
 
