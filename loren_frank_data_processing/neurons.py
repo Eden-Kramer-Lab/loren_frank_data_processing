@@ -116,14 +116,16 @@ def get_all_spike_indicators(neuron_keys, animals,
                   for neuron_key in neuron_keys]
     n_time = time.size
     for ind, spikes_df in enumerate(spikes_dfs):
-        spike_time_ind = np.digitize(
-            spikes_df.index.total_seconds(), time.total_seconds())
-        spike_time_ind = spike_time_ind[spike_time_ind < n_time]
-        spikes_dfs[ind] = (spikes_df
-                           .iloc[spike_time_ind < n_time]
-                           .groupby(time[spike_time_ind]).sum()
-                           .reindex(index=time, fill_value=0))
-
+        try:
+            spike_time_ind = np.digitize(
+                spikes_df.index.total_seconds(), time.total_seconds())
+            spike_time_ind = spike_time_ind[spike_time_ind < n_time]
+            spikes_dfs[ind] = (spikes_df
+                               .iloc[spike_time_ind < n_time]
+                               .groupby(time[spike_time_ind]).sum()
+                               .reindex(index=time, fill_value=0))
+        except AttributeError:
+            logger.warn(f'{neuron_keys[ind]} has no spikes. Skipping...')
     return pd.concat(spikes_dfs, axis=1)
 
 
@@ -161,10 +163,9 @@ def convert_neuron_epoch_to_dataframe(tetrodes_in_epoch, animal, day,
                   .assign(neuron_id=_get_neuron_id)
                 # set index to identify rows
                   .set_index(NEURON_INDEX)
-                  .sort_index()
-                )
+                  .sort_index())
     except AttributeError:
-        logger.warn('{0}, {1}, {2} not processed'.format(animal, day, epoch))
+        logger.debug(f'Neuron info {animal}, {day}, {epoch} not processed')
 
 
 def get_neuron_info_path(animal):
