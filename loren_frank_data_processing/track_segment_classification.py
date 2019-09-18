@@ -25,7 +25,7 @@ def get_track_segments_from_graph(track_graph):
                        for node1, node2 in track_graph.edges()])
 
 
-def plot_track(track_graph, ax=None):
+def plot_track(track_graph, ax=None, **kwds):
     '''
 
     Parameters
@@ -34,7 +34,7 @@ def plot_track(track_graph, ax=None):
 
     '''
     node_position = nx.get_node_attributes(track_graph, 'pos')
-    nx.draw_networkx(track_graph, node_position, ax)
+    nx.draw_networkx(track_graph, node_position, ax, **kwds)
 
 
 def project_points_to_segment(track_segments, position):
