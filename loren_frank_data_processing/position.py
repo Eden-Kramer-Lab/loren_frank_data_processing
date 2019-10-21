@@ -363,7 +363,7 @@ def make_track_graph(epoch_key, animals):
         track_graph.add_node(node_id, pos=tuple(node_position))
 
     for edge, distance in zip(edges, edge_distances):
-        track_graph.add_edge(edge[0], edge[1], distance=distance)
+        track_graph.add_path(edge, distance=distance)
 
     center_well_id = np.unique(
         np.nonzero(np.isin(nodes, center_well_position).sum(axis=1) > 1)[0])[0]
