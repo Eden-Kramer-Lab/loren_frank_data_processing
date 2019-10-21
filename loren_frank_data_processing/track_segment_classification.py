@@ -141,7 +141,7 @@ def route_distance(candidates_t_1, candidates_t, track_graph):
         nodes = np.empty((4,), dtype=object)
         nodes[[1, 2]] = inside_nodes[sorted_inside]
         nodes[[0, 3]] = outside_nodes[sorted_outside]
-        track_graph1.add_path(nodes)
+        nx.add_path(track_graph1, nodes)
         track_graph1.remove_edge(node1, node2)
         track_graph1.nodes[node_name_t]['pos'] = tuple(position_t)
         track_graph1.nodes[node_name_t_1]['pos'] = tuple(position_t_1)
@@ -352,7 +352,7 @@ def calculate_linear_distance(track_graph, track_segment_id, well_id,
             projected_track_positions, edge_ids):
         track_graph1 = track_graph.copy()
         node1, node2 = edge_id
-        track_graph1.add_path([node1, 'projected', node2])
+        nx.add_path(track_graph1, [node1, 'projected', node2])
         track_graph1.remove_edge(node1, node2)
         track_graph1.nodes['projected']['pos'] = tuple(projected_position)
 
