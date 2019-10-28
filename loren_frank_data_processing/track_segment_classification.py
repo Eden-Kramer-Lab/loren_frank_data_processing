@@ -1,9 +1,7 @@
 from itertools import product
 
-import numpy as np
-
 import networkx as nx
-
+import numpy as np
 
 np.warnings.filterwarnings('ignore')
 
@@ -149,8 +147,8 @@ def route_distance(candidates_t_1, candidates_t, track_graph):
     # calculate distance
     for e in track_graph1.edges(data=True):
         track_graph1.edges[e[:2]]['distance'] = np.linalg.norm(
-            track_graph1.node[e[0]]['pos'] -
-            np.array(track_graph1.node[e[1]]['pos']))
+            track_graph1.nodes[e[0]]['pos'] -
+            np.array(track_graph1.nodes[e[1]]['pos']))
 
     # calculate path distance
     node_names_t = ['t_{0}'.format(i) for i in range(n_segments)]
