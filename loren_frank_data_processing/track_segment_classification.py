@@ -357,8 +357,8 @@ def calculate_linear_distance(track_graph, track_segment_id, well_id,
         # calculate distance
         for edge in track_graph1.edges(data=True):
             track_graph1.edges[edge[:2]]['distance'] = np.linalg.norm(
-                track_graph1.node[edge[0]]['pos'] -
-                np.array(track_graph1.node[edge[1]]['pos']))
+                track_graph1.nodes[edge[0]]['pos'] -
+                np.array(track_graph1.nodes[edge[1]]['pos']))
 
         linear_distance.append(
             nx.shortest_path_length(track_graph1, source='projected',
