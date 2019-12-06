@@ -47,8 +47,7 @@ def get_multiunit_dataframe(tetrode_key, animals):
                 .loc[~is_duplicated]
                 .sort_index())
     except (FileNotFoundError, TypeError):
-        logger.warning('Failed to load file: {0}'.format(
-            get_multiunit_filename(tetrode_key, animals)))
+        pass
 
 
 def get_multiunit_dataframe2(tetrode_key, animals):
