@@ -85,10 +85,22 @@ def make_tetrode_dataframe(animals):
     tetrode_info = []
     for animal in animals.values():
         file_name = get_tetrode_info_path(animal)
-        for day_ind, day in enumerate(
-                loadmat(file_name, squeeze_me=True)['tetinfo']):
+        tet_info = loadmat(file_name, squeeze_me=True)['tetinfo']
+        try:
+            for day_ind, day in enumerate(tet_info):
+                try:
+                    for epoch_ind, epoch in enumerate(day):
+                        epoch_key = animal.short_name, day_ind + 1, epoch_ind + 1 # noqa
+                        tetrode_info.append(
+                            convert_tetrode_epoch_to_dataframe(
+                                epoch, epoch_key))
+                except IndexError:
+                    pass
+        except TypeError:
+            # Only one day of recording
             try:
-                for epoch_ind, epoch in enumerate(day):
+                day_ind = 0
+                for epoch_ind, epoch in enumerate(tet_info):
                     epoch_key = animal.short_name, day_ind + 1, epoch_ind + 1
                     tetrode_info.append(
                         convert_tetrode_epoch_to_dataframe(epoch, epoch_key))
