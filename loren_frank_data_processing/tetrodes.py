@@ -175,7 +175,8 @@ def convert_tetrode_epoch_to_dataframe(tetrodes_in_epoch, epoch_key):
                   .set_index(['animal', 'day', 'epoch', 'tetrode_number'])
                   .sort_index()
                 )
-    except KeyError:
+    except KeyError as err:
+        logger.warn(err)
         return pd.DataFrame(tetrode_dict_list)
 
 
