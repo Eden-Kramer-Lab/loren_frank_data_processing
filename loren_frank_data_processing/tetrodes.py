@@ -90,7 +90,7 @@ def make_tetrode_dataframe(animals):
             for day_ind, day in enumerate(tet_info):
                 try:
                     for epoch_ind, epoch in enumerate(day):
-                        epoch_key = animal.short_name, day_ind + 1, epoch_ind + 1 # noqa
+                        epoch_key = animal.short_name, day_ind + 1, epoch_ind + 1  # noqa
                         tetrode_info.append(
                             convert_tetrode_epoch_to_dataframe(
                                 epoch, epoch_key))
@@ -161,23 +161,16 @@ def convert_tetrode_epoch_to_dataframe(tetrodes_in_epoch, epoch_key):
     animal, day, epoch = epoch_key
     tetrode_dict_list = [_convert_to_dict(
         tetrode) for tetrode in tetrodes_in_epoch]
-    try:
-        return (pd.DataFrame(tetrode_dict_list)
-                  .assign(numcells=lambda x: x['numcells'])
-                  .assign(depth=lambda x: x['depth'])
-                  .assign(area=lambda x: x['area'])
-                  .assign(animal=lambda x: animal)
-                  .assign(day=lambda x: day)
-                  .assign(epoch=lambda x: epoch)
-                  .assign(tetrode_number=lambda x: x.index + 1)
-                  .assign(tetrode_id=_get_tetrode_id)
-                # set index to identify rows
-                  .set_index(['animal', 'day', 'epoch', 'tetrode_number'])
-                  .sort_index()
-                )
-    except KeyError as err:
-        logger.warn(err)
-        return pd.DataFrame(tetrode_dict_list)
+    return (pd.DataFrame(tetrode_dict_list)
+              .assign(animal=lambda x: animal)
+              .assign(day=lambda x: day)
+              .assign(epoch=lambda x: epoch)
+              .assign(tetrode_number=lambda x: x.index + 1)
+              .assign(tetrode_id=_get_tetrode_id)
+            # set index to identify rows
+              .set_index(['animal', 'day', 'epoch', 'tetrode_number'])
+              .sort_index()
+            )
 
 
 def get_trial_time(epoch_key, animals):
