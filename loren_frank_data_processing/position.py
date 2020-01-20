@@ -10,6 +10,10 @@ from .track_segment_classification import (calculate_linear_distance,
 from .well_traversal_classification import score_inbound_outbound, segment_path
 
 
+EDGE_ORDER = [0, 2, 4, 1, 3]
+EDGE_SPACING = [15, 0, 15, 0]
+
+
 def _get_pos_dataframe(epoch_key, animals):
     animal, day, epoch = epoch_key
     struct = get_data_structure(animals[animal], day, 'pos', 'pos')[epoch - 1]
@@ -40,7 +44,8 @@ def get_position_dataframe(epoch_key, animals, use_hmm=True,
                            route_euclidean_distance_scaling=1,
                            min_distance_traveled=50,
                            sensor_std_dev=10,
-                           spacing=15):
+                           edge_spacing=EDGE_SPACING,
+                           edge_order=EDGE_ORDER):
     '''Returns a list of position dataframes with a length corresponding
      to the number of epochs in the epoch key -- either a tuple or a
     list of tuples with the format (animal, day, epoch_number)
@@ -67,16 +72,18 @@ def get_position_dataframe(epoch_key, animals, use_hmm=True,
             epoch_key, animals, position_df,
             max_distance_from_well, route_euclidean_distance_scaling,
             min_distance_traveled, sensor_std_dev,
-            spacing=spacing)
+            edge_order=edge_order, edge_spacing=edge_spacing)
     else:
         linear_position_df = _get_linpos_dataframe(
-            epoch_key, animals, spacing=spacing)
+            epoch_key, animals, edge_order=edge_order,
+            edge_spacing=edge_spacing)
         position_df = position_df.join(linear_position_df)
 
     return position_df
 
 
-def _get_linpos_dataframe(epoch_key, animals, spacing=15):
+def _get_linpos_dataframe(epoch_key, animals, edge_spacing=EDGE_SPACING,
+                          edge_order=EDGE_ORDER):
     '''The time series of linearized (1D) positions of the animal for a given
     epoch.
 
@@ -120,9 +127,11 @@ def _get_linpos_dataframe(epoch_key, animals, spacing=15):
     position_df = position_df.assign(
         arm_name=lambda df: df.track_segment_id.map(SEGMENT_ID_TO_ARM_NAME)
     )
-    position_df['linear_position'] = _calulcate_linear_position(position_df)
-    position_df['linear_position2'] = _calulcate_linear_position2(
-        position_df, spacing=spacing)
+    track_graph, center_well_id = make_track_graph(epoch_key, animals)
+    position_df['linear_position'] = _calulcate_linear_position(
+        position_df.linear_distance.values,
+        position_df.track_segment_id.values, track_graph, center_well_id,
+        edge_order=edge_order, edge_spacing=edge_spacing)
     return position_df.assign(linear_speed=np.abs(position_df.linear_velocity))
 
 
@@ -136,32 +145,96 @@ def calculate_linear_velocity(linear_distance, smooth_duration=0.500,
     return np.r_[smoothed_velocity[0], smoothed_velocity]
 
 
-def _calulcate_linear_position(position_df):
-    '''Calculate linear distance but map left turns onto the negativie axis and
-    right turns onto the positive axis'''
-    return (position_df.turn.map({np.nan: np.nan, 'Right': 1, 'Left': -1})
-            * position_df.linear_distance)
+def convert_linear_distance_to_linear_position(
+        linear_distance, edge_id, edge_order, spacing=30):
+    linear_position = linear_distance.copy()
+    n_edges = len(edge_order)
+    if isinstance(spacing, int) | isinstance(spacing, float):
+        spacing = [spacing, ] * (n_edges - 1)
+
+    for prev_edge, cur_edge, space in zip(
+            edge_order[:-1], edge_order[1:], spacing):
+        is_cur_edge = (edge_id == cur_edge)
+        is_prev_edge = (edge_id == prev_edge)
+
+        cur_distance = linear_position[is_cur_edge]
+        cur_distance -= cur_distance.min()
+        cur_distance += linear_position[is_prev_edge].max() + space
+        linear_position[is_cur_edge] = cur_distance
+
+    return linear_position
 
 
-def _calulcate_linear_position2(position_df, spacing=15):
+def get_graph_1D_2D_relationships(track_graph, edge_order, edge_spacing,
+                                  center_well_id):
+    '''
+
+    Parameters
+    ----------
+    track_graph : networkx.Graph
+    edge_order : array-like, shape (n_edges,)
+    edge_spacing : float or array-like, shape (n_edges,)
+    center_well_id : int
+
+    Returns
+    -------
+    node_linear_position : numpy.ndarray, shape (n_edges, n_position_dims)
+    edges : numpy.ndarray, shape (n_edges, 2)
+    node_2D_position : numpy.ndarray, shape (n_edges, 2, n_position_dims)
+    edge_dist : numpy.ndarray, shape (n_edges,)
+
+    '''
+    linear_distance = []
+    edge_id = []
+
+    dist = dict(
+        nx.all_pairs_dijkstra_path_length(track_graph, weight="distance")
+    )
+    n_edges = len(track_graph.edges)
+
+    for ind, (node1, node2) in enumerate(track_graph.edges):
+        linear_distance.append(dist[center_well_id][node1])
+        linear_distance.append(dist[center_well_id][node2])
+        edge_id.append(ind)
+        edge_id.append(ind)
+
+    linear_distance = np.array(linear_distance)
+    edge_id = np.array(edge_id)
+
+    node_linear_position = convert_linear_distance_to_linear_position(
+        linear_distance, edge_id, edge_order, spacing=edge_spacing
+    )
+
+    node_linear_position = node_linear_position.reshape((n_edges, 2))[
+        edge_order]
+    node_linear_distance = linear_distance.reshape((n_edges, 2))[edge_order]
+
+    return node_linear_position, node_linear_distance
+
+
+def _calulcate_linear_position(linear_distance, edge_id, track_graph,
+                               center_well_id, edge_order, edge_spacing=15):
     '''Calculate linear distance but map the left arm to the
     range(max_linear_distance, max_linear_distance + max_left_arm_distance).'''
-    linear_position2 = position_df.linear_distance.copy()
+    linear_position = linear_distance.copy()
 
-    is_center = (position_df.arm_name == 'Center Arm')
+    node_linear_position, node_linear_distance = get_graph_1D_2D_relationships(
+        track_graph, edge_order, edge_spacing, center_well_id)
 
-    is_right = (position_df.arm_name == 'Right Arm')
-    right_distance = linear_position2[is_right]
-    right_distance -= right_distance.min()
-    right_distance += linear_position2[is_center].max() + spacing
-    linear_position2[is_right] = right_distance
+    n_edges = len(edge_order)
+    if isinstance(edge_spacing, int) | isinstance(edge_spacing, float):
+        edge_spacing = [edge_spacing, ] * (n_edges - 1)
 
-    is_left = (position_df.arm_name == 'Left Arm')
-    left_distance = linear_position2[is_left]
-    left_distance -= left_distance.min()
-    left_distance += linear_position2[is_right].max() + spacing
-    linear_position2[is_left] = left_distance
-    return linear_position2
+    for start_linear_position, start_linear_distance, cur_edge in zip(
+            node_linear_position[:, 0], node_linear_distance[:, 0],
+            edge_order):
+        is_cur_edge = (edge_id == cur_edge)
+
+        cur_distance = linear_distance[is_cur_edge] - start_linear_distance
+        cur_distance += start_linear_position
+        linear_position[is_cur_edge] = cur_distance
+
+    return linear_position
 
 
 def _get_linear_position_hmm(epoch_key, animals, position_df,
@@ -169,7 +242,7 @@ def _get_linear_position_hmm(epoch_key, animals, position_df,
                              route_euclidean_distance_scaling=1,
                              min_distance_traveled=50,
                              sensor_std_dev=10,
-                             spacing=15):
+                             edge_order=EDGE_ORDER, edge_spacing=EDGE_SPACING):
     animal, day, epoch = epoch_key
     struct = get_data_structure(animals[animal], day, 'pos', 'pos')[epoch - 1]
     position_data = struct['data'][0, 0]
@@ -199,9 +272,10 @@ def _get_linear_position_hmm(epoch_key, animals, position_df,
         labeled_segments, segments_df, right_index=True,
         left_on='labeled_segments', how='outer')
     position_df = pd.concat((position_df, segments_df), axis=1)
-    position_df['linear_position'] = _calulcate_linear_position(position_df)
-    position_df['linear_position2'] = _calulcate_linear_position2(
-        position_df, spacing=spacing)
+    position_df['linear_position'] = _calulcate_linear_position(
+        position_df.linear_distance.values,
+        position_df.track_segment_id.values, track_graph, center_well_id,
+        edge_order=edge_order, edge_spacing=edge_spacing)
     position_df['linear_velocity'] = calculate_linear_velocity(
         position_df.linear_distance, smooth_duration=0.500,
         sampling_frequency=29)
@@ -217,7 +291,8 @@ def get_interpolated_position_dataframe(epoch_key, animals,
                                         route_euclidean_distance_scaling=1,
                                         min_distance_traveled=50,
                                         sensor_std_dev=10,
-                                        spacing=15):
+                                        edge_spacing=EDGE_SPACING,
+                                        edge_order=EDGE_ORDER):
     '''Gives the interpolated position of animal for a given epoch.
 
     Defaults to interpolating the position to the LFP time. Can use the
@@ -249,9 +324,9 @@ def get_interpolated_position_dataframe(epoch_key, animals,
     position_df = get_position_dataframe(
         epoch_key, animals, use_hmm, max_distance_from_well,
         route_euclidean_distance_scaling, min_distance_traveled,
-        sensor_std_dev, spacing=spacing)
+        sensor_std_dev, edge_order=edge_order, edge_spacing=edge_spacing)
     position_df = position_df.drop(
-        ['linear_position', 'linear_position2'], axis=1)
+        ['linear_position'], axis=1)
 
     CONTINUOUS_COLUMNS = ['head_direction', 'speed', 'linear_distance',
                           'x_position', 'y_position',
@@ -271,7 +346,7 @@ def get_interpolated_position_dataframe(epoch_key, animals,
         (position_continuous.index, time))), name='time')
     interpolated_position = (position_continuous
                              .reindex(index=new_index)
-                             .interpolate(method='time')
+                             .interpolate(method='linear')
                              .reindex(index=time))
     interpolated_position.loc[
         interpolated_position.linear_distance < 0, 'linear_distance'] = 0.0
@@ -280,11 +355,11 @@ def get_interpolated_position_dataframe(epoch_key, animals,
         interpolated_position.linear_speed < 0, 'linear_speed'] = 0.0
 
     position_info = position_categorical.join(interpolated_position)
-
+    track_graph, center_well_id = make_track_graph(epoch_key, animals)
     position_info['linear_position'] = _calulcate_linear_position(
-        position_info)
-    position_info['linear_position2'] = _calulcate_linear_position2(
-        position_info, spacing=spacing)
+        position_info.linear_distance.values,
+        position_info.track_segment_id.values, track_graph, center_well_id,
+        edge_order=edge_order, edge_spacing=edge_spacing)
 
     return position_info
 
