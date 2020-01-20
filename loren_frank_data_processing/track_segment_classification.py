@@ -40,8 +40,8 @@ def project_points_to_segment(track_segments, position):
 
     Parameters
     ----------
-    track_segments : ndarray, shape (n_segments, n_nodes, n_space)
-    position : ndarray, shape (n_time, n_space)
+    track_segments : ndarray, shape (n_segments, n_nodes, 2)
+    position : ndarray, shape (n_time, 2)
 
     Returns
     -------
