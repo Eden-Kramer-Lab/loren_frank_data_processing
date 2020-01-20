@@ -10,11 +10,14 @@ dependencies:
 - dask
 - scipy
 - netcdf4
+- ffmpeg
+- matplotlib
 - "networkx >= 2.0"
 - "pytest >= 2.7.1"
 - pytest-cov
 - coveralls
 - setuptools
 - jupyter
+- jupyterlab
 - numpydoc
 - sphinx

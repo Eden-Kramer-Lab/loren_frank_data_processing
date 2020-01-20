@@ -3,7 +3,8 @@
 from setuptools import find_packages, setup
 
 INSTALL_REQUIRES = ['numpy >= 1.11', 'pandas >= 0.18.0', 'scipy', 'xarray',
-                    'netCDF4', 'dask', 'networkx >= 2.0.0']
+                    'netCDF4', 'dask', 'networkx >= 2.0.0', 'ffmpeg',
+                    'matplotlib']
 TESTS_REQUIRE = ['pytest >= 2.7.1']
 
 setup(
