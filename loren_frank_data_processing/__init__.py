@@ -14,3 +14,4 @@ from .task import make_epochs_dataframe
 from .tetrodes import (get_LFP_dataframe, get_LFPs, get_trial_time,
                        make_tetrode_dataframe)
 from .utilities import copy_animal, reshape_to_segments
+from .visualization import make_actual_vs_linearized_position_movie
