@@ -9,7 +9,6 @@ from .track_segment_classification import (calculate_linear_distance,
                                            classify_track_segments)
 from .well_traversal_classification import score_inbound_outbound, segment_path
 
-
 EDGE_ORDER = [0, 2, 4, 1, 3]
 EDGE_SPACING = [15, 0, 15, 0]
 
@@ -43,7 +42,8 @@ def get_position_dataframe(epoch_key, animals, use_hmm=True,
                            max_distance_from_well=5,
                            route_euclidean_distance_scaling=1,
                            min_distance_traveled=50,
-                           sensor_std_dev=10,
+                           sensor_std_dev=5,
+                           diagonal_bias=1E-1,
                            edge_spacing=EDGE_SPACING,
                            edge_order=EDGE_ORDER):
     '''Returns a list of position dataframes with a length corresponding
@@ -71,7 +71,7 @@ def get_position_dataframe(epoch_key, animals, use_hmm=True,
         position_df = _get_linear_position_hmm(
             epoch_key, animals, position_df,
             max_distance_from_well, route_euclidean_distance_scaling,
-            min_distance_traveled, sensor_std_dev,
+            min_distance_traveled, sensor_std_dev, diagonal_bias,
             edge_order=edge_order, edge_spacing=edge_spacing)
     else:
         linear_position_df = _get_linpos_dataframe(
@@ -241,7 +241,8 @@ def _get_linear_position_hmm(epoch_key, animals, position_df,
                              max_distance_from_well=5,
                              route_euclidean_distance_scaling=1,
                              min_distance_traveled=50,
-                             sensor_std_dev=10,
+                             sensor_std_dev=5,
+                             diagonal_bias=1E-1,
                              edge_order=EDGE_ORDER, edge_spacing=EDGE_SPACING):
     animal, day, epoch = epoch_key
     struct = get_data_structure(animals[animal], day, 'pos', 'pos')[epoch - 1]
@@ -251,7 +252,8 @@ def _get_linear_position_hmm(epoch_key, animals, position_df,
     track_segment_id = classify_track_segments(
         track_graph, position,
         route_euclidean_distance_scaling=route_euclidean_distance_scaling,
-        sensor_std_dev=sensor_std_dev)
+        sensor_std_dev=sensor_std_dev,
+        diagonal_bias=diagonal_bias)
     position_df['linear_distance'] = calculate_linear_distance(
         track_graph, track_segment_id, center_well_id, position)
     position_df['track_segment_id'] = track_segment_id
@@ -290,7 +292,8 @@ def get_interpolated_position_dataframe(epoch_key, animals,
                                         max_distance_from_well=5,
                                         route_euclidean_distance_scaling=1,
                                         min_distance_traveled=50,
-                                        sensor_std_dev=10,
+                                        sensor_std_dev=5,
+                                        diagonal_bias=1E-1,
                                         edge_spacing=EDGE_SPACING,
                                         edge_order=EDGE_ORDER):
     '''Gives the interpolated position of animal for a given epoch.
@@ -325,7 +328,8 @@ def get_interpolated_position_dataframe(epoch_key, animals,
     position_df = get_position_dataframe(
         epoch_key, animals, use_hmm, max_distance_from_well,
         route_euclidean_distance_scaling, min_distance_traveled,
-        sensor_std_dev, edge_order=edge_order, edge_spacing=edge_spacing)
+        sensor_std_dev, diagonal_bias, edge_order=edge_order,
+        edge_spacing=edge_spacing)
     position_df = position_df.drop(
         ['linear_position'], axis=1)
 

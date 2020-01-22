@@ -87,7 +87,7 @@ def find_nearest_segment(track_segments, position):
     return np.argmin(distance, axis=1)
 
 
-def euclidean_distance(position):
+def euclidean_distance_change(position):
     '''Distance between position at successive time points
 
     Parameters
@@ -161,7 +161,7 @@ def route_distance(candidates_t_1, candidates_t, track_graph):
     return np.array(path_distance).reshape((n_segments, n_segments))
 
 
-def route_distances(position, track_graph):
+def route_distance_change(position, track_graph):
     track_segments = get_track_segments_from_graph(track_graph)
     projected_track_position = project_points_to_segment(
         track_segments, position)
@@ -197,7 +197,7 @@ def normalize_to_probability(x, axis=-1):
 
 
 def calculate_empirical_state_transition(position, track_graph,
-                                         scaling=1E-1):
+                                         scaling=1E-1, diagonal_bias=1E-1):
     '''Calculates the state transition probabilty between track segments by
     favoring route distances that are similar to euclidean distances between
     successive time points.
@@ -221,10 +221,15 @@ def calculate_empirical_state_transition(position, track_graph,
 
     '''
     route_and_euclidean_distance_similarity = np.abs(
-        route_distances(position, track_graph) -
-        euclidean_distance(position)[:, np.newaxis, np.newaxis])
+        route_distance_change(position, track_graph) -
+        euclidean_distance_change(position)[:, np.newaxis, np.newaxis])
     exponential_pdf = scipy.stats.expon.pdf(
         route_and_euclidean_distance_similarity, scale=scaling)
+    exponential_pdf = normalize_to_probability(exponential_pdf, axis=2)
+
+    n_states = route_and_euclidean_distance_similarity.shape[1]
+    exponential_pdf += np.identity(n_states)[np.newaxis] * diagonal_bias
+
     return normalize_to_probability(exponential_pdf, axis=2)
 
 
@@ -278,7 +283,8 @@ def viterbi(initial_conditions, state_transition, likelihood):
 
 
 def classify_track_segments(track_graph, position, sensor_std_dev=10,
-                            route_euclidean_distance_scaling=1E-1):
+                            route_euclidean_distance_scaling=1E-1,
+                            diagonal_bias=1E-1):
     '''Find the most likely track segment for a given position.
 
     Tries to make sure the euclidean distance between successive time points
@@ -294,6 +300,8 @@ def classify_track_segments(track_graph, position, sensor_std_dev=10,
         How much to prefer route distances between successive time points
         that are closer to the euclidean distance. Smaller numbers mean the
         route distance is more likely to be close to the euclidean distance.
+    diagonal_bias : float, optional
+        Biases the transition matrix to prefer the current track segment.
 
     Returns
     -------
@@ -310,7 +318,8 @@ def classify_track_segments(track_graph, position, sensor_std_dev=10,
     n_segments = len(track_graph.edges)
     initial_conditions = np.ones((n_segments,))
     state_transition = calculate_empirical_state_transition(
-        position, track_graph, scaling=route_euclidean_distance_scaling)
+        position, track_graph, scaling=route_euclidean_distance_scaling,
+        diagonal_bias=diagonal_bias)
     likelihood = calculate_position_likelihood(
         position, track_graph, sigma=sensor_std_dev)
 
