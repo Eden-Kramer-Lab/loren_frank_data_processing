@@ -2,6 +2,7 @@ from itertools import product
 
 import networkx as nx
 import numpy as np
+import scipy.stats
 
 np.warnings.filterwarnings('ignore')
 
@@ -222,8 +223,8 @@ def calculate_empirical_state_transition(position, track_graph,
     route_and_euclidean_distance_similarity = np.abs(
         route_distances(position, track_graph) -
         euclidean_distance(position)[:, np.newaxis, np.newaxis])
-    exponential_pdf = (
-        np.exp(-route_and_euclidean_distance_similarity / scaling) / scaling)
+    exponential_pdf = scipy.stats.expon.pdf(
+        route_and_euclidean_distance_similarity, scale=scaling)
     return normalize_to_probability(exponential_pdf, axis=2)
 
 
