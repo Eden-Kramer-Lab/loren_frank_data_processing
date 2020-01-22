@@ -3,21 +3,24 @@ channels:
 - conda-forge
 - defaults
 dependencies:
-- "python >= 3.4"
-- "numpy >= 1.11"
-- "pandas >= 0.22.0"
+- python
+- numpy
+- pandas
 - xarray
 - dask
 - scipy
 - netcdf4
 - ffmpeg
 - matplotlib
-- "networkx >= 2.0"
-- "pytest >= 2.7.1"
+- networkx
+- pytest
 - pytest-cov
 - coveralls
 - setuptools
 - jupyter
 - jupyterlab
-- numpydoc
-- sphinx
+- nb_conda
+- setuptools
+- pip
+- pip:
+  - nb_black
