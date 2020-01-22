@@ -1,5 +1,6 @@
 from itertools import product
 
+import dask
 import networkx as nx
 import numpy as np
 import scipy.stats
@@ -103,6 +104,7 @@ def euclidean_distance_change(position):
     return np.concatenate(([np.nan], distance))
 
 
+@dask.delayed
 def route_distance(candidates_t_1, candidates_t, track_graph):
     '''
 
@@ -165,10 +167,10 @@ def route_distance_change(position, track_graph):
     track_segments = get_track_segments_from_graph(track_graph)
     projected_track_position = project_points_to_segment(
         track_segments, position)
-    distances = np.stack(
-        [route_distance(p_t, p_t_1, track_graph)
-         for p_t, p_t_1 in zip(projected_track_position[1:],
-                               projected_track_position[:-1])])
+    distances = [route_distance(p_t, p_t_1, track_graph)
+                 for p_t, p_t_1 in zip(projected_track_position[1:],
+                                       projected_track_position[:-1])]
+    distances = np.stack(dask.compute(*distances))
     return np.concatenate(
         (np.full((1, *distances.shape[1:]), np.nan), distances))
 
