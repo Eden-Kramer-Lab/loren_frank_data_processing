@@ -1,5 +1,6 @@
 from os.path import join
 
+import dask
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -155,26 +156,33 @@ def get_multiunit_indicator_dataframe(tetrode_key, animals,
             .reindex(index=time))
 
 
+@dask.delayed
+def _get_indicator(tetrode_key, animals, time):
+    try:
+        df = (get_multiunit_dataframe(tetrode_key, animals)
+              .loc[time.min():time.max()])
+    except AttributeError:
+        df = (get_multiunit_dataframe2(tetrode_key, animals)
+              .loc[time.min():time.max()])
+
+    time_index = np.digitize(df.index.total_seconds(),
+                             time.total_seconds())
+    time_index[time_index >= len(time)] = len(time) - 1
+
+    return (df.groupby(time[time_index]).mean()
+            .reindex(index=time)
+            .to_xarray()
+            .to_array('features'))
+
+
 def get_all_multiunit_indicators(tetrode_keys, animals,
                                  time_function=get_trial_time):
     time = time_function(tetrode_keys[0][:3], animals)
     multiunit_dfs = []
 
     for tetrode_key in tetrode_keys:
-        try:
-            df = (get_multiunit_dataframe(tetrode_key, animals)
-                  .loc[time.min():time.max()])
-        except AttributeError:
-            df = (get_multiunit_dataframe2(tetrode_key, animals)
-                  .loc[time.min():time.max()])
+        multiunit_dfs.append(_get_indicator(tetrode_key, animals, time))
 
-        time_index = np.digitize(df.index.total_seconds(),
-                                 time.total_seconds())
-        time_index[time_index >= len(time)] = len(time) - 1
-        multiunit_dfs.append(df.groupby(time[time_index]).mean()
-                             .reindex(index=time)
-                             .to_xarray()
-                             .to_array('features'))
-
-    return (xr.concat(multiunit_dfs, dim='tetrodes')
+    return (xr.concat(
+        dask.compute(*multiunit_dfs, scheduler='threads'), dim='tetrodes')
             .transpose('time', 'features', 'tetrodes'))
