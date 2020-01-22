@@ -313,6 +313,7 @@ def get_interpolated_position_dataframe(epoch_key, animals,
         How much to prefer route distances between successive time points
         that are closer to the euclidean distance. Smaller numbers mean the
         route distance is more likely to be close to the euclidean distance.
+        This favors less jumps. Larger numbers favor more jumps.
     min_distance_traveled : float, optional
 
     Returns
