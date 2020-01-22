@@ -4,6 +4,7 @@ spike indicators.
 
 from os.path import join
 
+import dask
 import numpy as np
 import pandas as pd
 from scipy.io import loadmat
@@ -109,24 +110,29 @@ def get_spike_indicator_dataframe(neuron_key, animals,
             .reindex(index=time, fill_value=0))
 
 
+@dask.delayed
+def _get_indicator(neuron_key, animals, time):
+    n_time = time.size
+    spikes_df = get_spikes_dataframe(neuron_key, animals)
+    try:
+        spike_time_ind = np.digitize(
+            spikes_df.index.total_seconds(), time.total_seconds())
+        spike_time_ind = spike_time_ind[spike_time_ind < n_time]
+        return (spikes_df.iloc[spike_time_ind < n_time]
+                .groupby(time[spike_time_ind]).sum()
+                .reindex(index=time, fill_value=0))
+    except AttributeError:
+        logger.debug(f'No spikes. Skipping...')
+
+
 def get_all_spike_indicators(neuron_keys, animals,
                              time_function=get_trial_time):
     time = time_function(neuron_keys[0][:3], animals)
-    spikes_dfs = [get_spikes_dataframe(neuron_key, animals)
-                  for neuron_key in neuron_keys]
-    n_time = time.size
-    for ind, spikes_df in enumerate(spikes_dfs):
-        try:
-            spike_time_ind = np.digitize(
-                spikes_df.index.total_seconds(), time.total_seconds())
-            spike_time_ind = spike_time_ind[spike_time_ind < n_time]
-            spikes_dfs[ind] = (spikes_df
-                               .iloc[spike_time_ind < n_time]
-                               .groupby(time[spike_time_ind]).sum()
-                               .reindex(index=time, fill_value=0))
-        except AttributeError:
-            logger.warn(f'{neuron_keys[ind]} has no spikes. Skipping...')
-    return pd.concat(spikes_dfs, axis=1)
+    spikes_dfs = []
+    for neuron_key in neuron_keys:
+        spikes_dfs.append(_get_indicator(neuron_key, animals, time))
+
+    return pd.concat(dask.compute(*spikes_dfs, scheduler='threads'), axis=1)
 
 
 def convert_neuron_epoch_to_dataframe(tetrodes_in_epoch, animal, day,
