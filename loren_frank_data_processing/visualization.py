@@ -18,24 +18,34 @@ def _get_projected_track_position(track_graph, track_segment_id, position):
 
 
 def make_actual_vs_linearized_position_movie(
-        track_graph, all_position, position, track_segment_id,
-        all_time, all_linear_position, linear_position, time,
+        track_graph, position_df, time_slice=None,
         movie_name='actual_vs_linearized', frame_rate=33):
     '''
 
     Parameters
     ----------
     track_graph : networkx.Graph
-    all_position : np.ndarray, shape (n_time, 2)
-    position : np.ndarray, shape (n_time_slice, 2)
-    track_segment_id : ndarray, shape (n_time_slice,)
-    all_linear_position : ndarray, shape (n_time,)
-    linear_position : ndarray, shape (n_time_slice,)
-    time : ndarray, shape (n_time_slice,)
+    position_df : pandas.DataFrame
+    time_slice : slice or None, optional
     movie_name : str, optional
     frame_rate : float, optional
         Frames per second.
     '''
+
+    all_position = position_df.loc[:, ['x_position', 'y_position']].values
+    all_linear_position = position_df.linear_position.values
+    all_time = position_df.index.values / np.timedelta64(1, 's')
+
+    if time_slice is None:
+        position = all_position
+        track_segment_id = position_df.track_segment_id.values
+        linear_position = all_linear_position
+        time = all_time
+    else:
+        position = all_position[time_slice]
+        track_segment_id = position_df.iloc[time_slice].track_segment_id.values
+        linear_position = all_linear_position[time_slice]
+        time = all_time[time_slice]
 
     projected_track_position = _get_projected_track_position(
         track_graph, track_segment_id, position)
