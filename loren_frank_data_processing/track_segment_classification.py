@@ -148,10 +148,11 @@ def route_distance(candidates_t_1, candidates_t, track_graph):
         track_graph1.nodes[node_name_t_1]['pos'] = tuple(position_t_1)
 
     # calculate distance
-    for e in track_graph1.edges(data=True):
-        track_graph1.edges[e[:2]]['distance'] = np.linalg.norm(
-            track_graph1.nodes[e[0]]['pos'] -
-            np.array(track_graph1.nodes[e[1]]['pos']))
+    for node1, node2 in track_graph1.edges:
+        x1, y1 = track_graph1.nodes[node1]['pos']
+        x2, y2 = track_graph1.nodes[node2]['pos']
+        track_graph1.edges[(node1, node2)]['distance'] = sqrt(
+            (x2 - x1)**2 + (y2 - y1)**2)
 
     # calculate path distance
     path_distance = np.zeros((n_segments, n_segments))
