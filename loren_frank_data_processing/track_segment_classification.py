@@ -1,4 +1,5 @@
 from itertools import product
+from math import sqrt
 
 import dask
 import networkx as nx
@@ -154,10 +155,12 @@ def route_distance(candidates_t_1, candidates_t, track_graph):
 
     # calculate path distance
     path_distance = np.zeros((n_segments, n_segments))
+    length = dict(nx.all_pairs_dijkstra_path_length(
+        track_graph1, weight="distance"))
+
     for source, target in product(range(n_segments), range(n_segments)):
-        path_distance[source, target] = nx.shortest_path_length(
-            track_graph1, source=f't_{source}', target=f't_1_{target}',
-            weight='distance')
+        path_distance[source, target] = length[f't_{source}'][f't_1_{target}']
+
     return path_distance
 
 
