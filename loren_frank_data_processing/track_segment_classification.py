@@ -154,13 +154,12 @@ def route_distance(candidates_t_1, candidates_t, track_graph):
             np.array(track_graph1.nodes[e[1]]['pos']))
 
     # calculate path distance
-    node_names_t = ['t_{0}'.format(i) for i in range(n_segments)]
-    node_names_t_1 = ['t_1_{0}'.format(i) for i in range(n_segments)]
-    path_distance = [
-        nx.shortest_path_length(track_graph1, source=node_t, target=node_t_1,
-                                weight='distance')
-        for node_t, node_t_1 in product(node_names_t, node_names_t_1)]
-    return np.array(path_distance).reshape((n_segments, n_segments))
+    path_distance = np.zeros((n_segments, n_segments))
+    for source, target in product(range(n_segments), range(n_segments)):
+        path_distance[source, target] = nx.shortest_path_length(
+            track_graph1, source=f't_{source}', target=f't_1_{target}',
+            weight='distance')
+    return path_distance
 
 
 def route_distance_change(position, track_graph):
