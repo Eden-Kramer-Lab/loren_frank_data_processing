@@ -245,10 +245,8 @@ def _get_linear_position_hmm(epoch_key, animals, position_df,
                              diagonal_bias=1E-1,
                              edge_order=EDGE_ORDER, edge_spacing=EDGE_SPACING):
     animal, day, epoch = epoch_key
-    struct = get_data_structure(animals[animal], day, 'pos', 'pos')[epoch - 1]
-    position_data = struct['data'][0, 0]
     track_graph, center_well_id = make_track_graph(epoch_key, animals)
-    position = position_data[:, 1:3]
+    position = position_df.loc[:, ['x_position', 'y_position']].values
     track_segment_id = classify_track_segments(
         track_graph, position,
         route_euclidean_distance_scaling=route_euclidean_distance_scaling,
