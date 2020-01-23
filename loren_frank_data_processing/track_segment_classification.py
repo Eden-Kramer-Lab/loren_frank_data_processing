@@ -129,7 +129,7 @@ def route_distance(candidates_t_1, candidates_t, track_graph):
     # insert virtual node
     for edge_number, (position_t, position_t_1, (node1, node2)) in enumerate(
             zip(candidates_t, candidates_t_1, track_graph.edges)):
-        node_name_t, node_name_t_1 = f't_{edge_number}', f't_1_{edge_number}'
+        node_name_t, node_name_t_1 = f't_0_{edge_number}', f't_1_{edge_number}'
         nx.add_path(track_graph1, [node1, node_name_t, node2])
         nx.add_path(track_graph1, [node1, node_name_t_1, node2])
         nx.add_path(track_graph1, [node_name_t, node_name_t_1])
@@ -144,14 +144,16 @@ def route_distance(candidates_t_1, candidates_t, track_graph):
             (x2 - x1)**2 + (y2 - y1)**2)
 
     # calculate path distance
-    path_distance = np.zeros((n_segments, n_segments))
-    length = dict(nx.all_pairs_dijkstra_path_length(
-        track_graph1, weight="distance"))
+    path_distance = scipy.sparse.csgraph.dijkstra(
+        nx.to_scipy_sparse_matrix(track_graph1, weight='distance'))
 
-    for source, target in product(range(n_segments), range(n_segments)):
-        path_distance[source, target] = length[f't_{source}'][f't_1_{target}']
+    n_original_nodes, n_total_nodes = (
+        len(track_graph.nodes), len(track_graph1.nodes))
+    node_ind = np.arange(n_total_nodes)
+    start_node_ind = node_ind[n_original_nodes::2]
+    end_node_ind = node_ind[n_original_nodes + 1::2]
 
-    return path_distance
+    return path_distance[start_node_ind][:, end_node_ind]
 
 
 def route_distance_change(position, track_graph):
