@@ -148,7 +148,7 @@ def segment_path(time, position, well_locations, epoch_key, animals,
             ('to_well', to_well),
             ('distance_traveled', distance_traveled)]
     index = pd.Index(segment_labels, name='segment')
-    return (pd.DataFrame.from_items(data).set_index(index),
+    return (pd.DataFrame.from_dict(dict(data)).set_index(index),
             pd.DataFrame(dict(labeled_segments=labeled_segments), index=time))
 
 
