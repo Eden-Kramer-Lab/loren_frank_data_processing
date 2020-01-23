@@ -130,19 +130,9 @@ def route_distance(candidates_t_1, candidates_t, track_graph):
     for edge_number, (position_t, position_t_1, (node1, node2)) in enumerate(
             zip(candidates_t, candidates_t_1, track_graph.edges)):
         node_name_t, node_name_t_1 = f't_{edge_number}', f't_1_{edge_number}'
-        outside_nodes = np.array([node1, node2], dtype=object)
-        inside_nodes = np.array([node_name_t, node_name_t_1], dtype=object)
-        outside_pos = np.array(
-            [track_graph1.nodes[node1]['pos'],
-             track_graph1.nodes[node2]['pos']], dtype=object)
-        inside_pos = np.array([position_t, position_t_1])
-        sorted_outside = np.argsort(outside_pos, axis=0)[:, 0]
-        sorted_inside = np.argsort(inside_pos, axis=0)[:, 0]
-        nodes = np.empty((4,), dtype=object)
-        nodes[[1, 2]] = inside_nodes[sorted_inside]
-        nodes[[0, 3]] = outside_nodes[sorted_outside]
-        nx.add_path(track_graph1, nodes)
-        track_graph1.remove_edge(node1, node2)
+        nx.add_path(track_graph1, [node1, node_name_t, node2])
+        nx.add_path(track_graph1, [node1, node_name_t_1, node2])
+        nx.add_path(track_graph1, [node_name_t, node_name_t_1])
         track_graph1.nodes[node_name_t]['pos'] = tuple(position_t)
         track_graph1.nodes[node_name_t_1]['pos'] = tuple(position_t_1)
 
