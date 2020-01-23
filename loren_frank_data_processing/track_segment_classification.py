@@ -126,11 +126,9 @@ def route_distance(candidates_t_1, candidates_t, track_graph):
     track_graph1 = track_graph.copy()
 
     # insert virtual node
-    for candidate_id, (position_t, position_t_1, edge_id) in enumerate(
+    for edge_number, (position_t, position_t_1, (node1, node2)) in enumerate(
             zip(candidates_t, candidates_t_1, track_graph.edges)):
-        node_name_t = 't_{0}'.format(candidate_id)
-        node_name_t_1 = 't_1_{0}'.format(candidate_id)
-        node1, node2 = edge_id
+        node_name_t, node_name_t_1 = f't_{edge_number}', f't_1_{edge_number}'
         outside_nodes = np.array([node1, node2], dtype=object)
         inside_nodes = np.array([node_name_t, node_name_t_1], dtype=object)
         outside_pos = np.array(
