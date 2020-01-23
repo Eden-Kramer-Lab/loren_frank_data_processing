@@ -351,19 +351,30 @@ def get_interpolated_position_dataframe(epoch_key, animals,
                              .reindex(index=new_index)
                              .interpolate(method='linear')
                              .reindex(index=time))
-    interpolated_position.loc[
-        interpolated_position.linear_distance < 0, 'linear_distance'] = 0.0
+    track_graph, center_well_id = make_track_graph(epoch_key, animals)
+    node_linear_position, node_linear_distance = get_graph_1D_2D_relationships(
+        track_graph, edge_order, edge_spacing, center_well_id)
+
     interpolated_position.loc[interpolated_position.speed < 0, 'speed'] = 0.0
     interpolated_position.loc[
         interpolated_position.linear_speed < 0, 'linear_speed'] = 0.0
 
     position_info = position_categorical.join(interpolated_position)
-    track_graph, center_well_id = make_track_graph(epoch_key, animals)
+
     position_info['linear_position'] = _calulcate_linear_position(
         position_info.linear_distance.values,
         position_info.track_segment_id.values, track_graph, center_well_id,
         edge_order=edge_order, edge_spacing=edge_spacing)
 
+    for id, (min_lin_dist, max_lin_dist) in enumerate(node_linear_position):
+        position_info.loc[
+            (position_info.track_segment_id == edge_order[id]) &
+            (position_info.linear_position < min_lin_dist),
+            'linear_position'] = min_lin_dist
+        position_info.loc[
+            (position_info.track_segment_id == edge_order[id]) &
+            (position_info.linear_position > max_lin_dist),
+            'linear_position'] = max_lin_dist
     return position_info
 
 
