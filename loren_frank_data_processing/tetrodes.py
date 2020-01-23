@@ -68,8 +68,8 @@ def get_LFP_dataframe(tetrode_key, animals):
             get_LFP_filename(tetrode_key, animals)))
 
 
-def make_tetrode_dataframe(animals):
-    '''Information about all tetrodes such as recording location.
+def make_tetrode_dataframe(animals, epoch_key=None):
+    """Information about all tetrodes such as recording location.
 
     Parameters
     ----------
@@ -81,19 +81,33 @@ def make_tetrode_dataframe(animals):
     -------
     tetrode_infomation : pandas.DataFrame
 
-    '''
+    """
     tetrode_info = []
+    if epoch_key is not None:
+        animal, day, epoch = epoch_key
+        file_name = get_tetrode_info_path(animals[animal])
+        tet_info = loadmat(file_name, squeeze_me=True)["tetinfo"]
+        tetrode_info.append(
+            convert_tetrode_epoch_to_dataframe(
+                tet_info[day - 1][epoch - 1], epoch_key))
+        return pd.concat(tetrode_info, sort=True)
+
     for animal in animals.values():
         file_name = get_tetrode_info_path(animal)
-        tet_info = loadmat(file_name, squeeze_me=True)['tetinfo']
+        tet_info = loadmat(file_name, squeeze_me=True)["tetinfo"]
         try:
             for day_ind, day in enumerate(tet_info):
                 try:
                     for epoch_ind, epoch in enumerate(day):
-                        epoch_key = animal.short_name, day_ind + 1, epoch_ind + 1  # noqa
+                        epoch_key = (
+                            animal.short_name,
+                            day_ind + 1,
+                            epoch_ind + 1,
+                        )  # noqa
                         tetrode_info.append(
                             convert_tetrode_epoch_to_dataframe(
-                                epoch, epoch_key))
+                                epoch, epoch_key)
+                        )
                 except IndexError:
                     pass
         except TypeError:
@@ -174,7 +188,7 @@ def convert_tetrode_epoch_to_dataframe(tetrodes_in_epoch, epoch_key):
 
 
 def get_trial_time(epoch_key, animals):
-    '''Time in the recording session in terms of the LFP.
+    """Time in the recording session in terms of the LFP.
 
     This will return the LFP time of the first tetrode found (according to the
     tetrode info). This is useful when there are slightly different timings
@@ -193,16 +207,14 @@ def get_trial_time(epoch_key, animals):
     -------
     time : pandas.Index
 
-    '''
-    tetrode_info = (
-        make_tetrode_dataframe(animals)
-        .xs(epoch_key, drop_level=False))
+    """
+    tetrode_info = make_tetrode_dataframe(animals, epoch_key=epoch_key)
     for tetrode_key in tetrode_info.index:
         lfp_df = get_LFP_dataframe(tetrode_key, animals)
         if lfp_df is not None:
             break
 
-    return lfp_df.index.rename('time')
+    return lfp_df.index.rename("time")
 
 
 def get_LFPs(tetrode_keys, animals):
