@@ -105,7 +105,6 @@ def euclidean_distance_change(position):
     return np.concatenate(([np.nan], distance))
 
 
-@dask.delayed
 def route_distance(candidates_t_1, candidates_t, track_graph):
     '''
 
@@ -163,7 +162,7 @@ def route_distance_change(position, track_graph):
     distances = [route_distance(p_t, p_t_1, track_graph)
                  for p_t, p_t_1 in zip(projected_track_position[1:],
                                        projected_track_position[:-1])]
-    distances = np.stack(dask.compute(*distances))
+    distances = np.stack(distances)
     return np.concatenate(
         (np.full((1, *distances.shape[1:]), np.nan), distances))
 
