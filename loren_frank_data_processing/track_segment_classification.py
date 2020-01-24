@@ -1,7 +1,5 @@
-from itertools import product
 from math import sqrt
 
-import dask
 import networkx as nx
 import numpy as np
 import scipy.stats
