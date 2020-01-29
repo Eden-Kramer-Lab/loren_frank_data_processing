@@ -245,7 +245,8 @@ def _get_linear_position_hmm(epoch_key, animals, position_df,
                              min_distance_traveled=50,
                              sensor_std_dev=5,
                              diagonal_bias=1E-1,
-                             edge_order=EDGE_ORDER, edge_spacing=EDGE_SPACING):
+                             edge_order=EDGE_ORDER, edge_spacing=EDGE_SPACING,
+                             position_sampling_frequency=33):
     animal, day, epoch = epoch_key
     track_graph, center_well_id = make_track_graph(epoch_key, animals)
     position = position_df.loc[:, ['x_position', 'y_position']].values
@@ -280,7 +281,7 @@ def _get_linear_position_hmm(epoch_key, animals, position_df,
         edge_order=edge_order, edge_spacing=edge_spacing)
     position_df['linear_velocity'] = calculate_linear_velocity(
         position_df.linear_distance, smooth_duration=0.500,
-        sampling_frequency=29)
+        sampling_frequency=position_sampling_frequency)
     position_df['linear_speed'] = np.abs(position_df.linear_velocity)
     position_df['is_correct'] = position_df.is_correct.fillna(False)
 
@@ -296,7 +297,8 @@ def get_interpolated_position_dataframe(epoch_key, animals,
                                         sensor_std_dev=5,
                                         diagonal_bias=1E-1,
                                         edge_spacing=EDGE_SPACING,
-                                        edge_order=EDGE_ORDER):
+                                        edge_order=EDGE_ORDER,
+                                        position_sampling_frequency=1500):
     '''Gives the interpolated position of animal for a given epoch.
 
     Defaults to interpolating the position to the LFP time. Can use the
@@ -342,7 +344,8 @@ def get_interpolated_position_dataframe(epoch_key, animals,
         epoch_key, animals, position_df,
         max_distance_from_well, route_euclidean_distance_scaling,
         min_distance_traveled, sensor_std_dev, diagonal_bias,
-        edge_order=edge_order, edge_spacing=edge_spacing)
+        edge_order=edge_order, edge_spacing=edge_spacing,
+        position_sampling_frequency=position_sampling_frequency)
 
     return position_df
 
