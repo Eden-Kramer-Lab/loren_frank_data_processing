@@ -346,6 +346,31 @@ def classify_track_segments(track_graph, position, sensor_std_dev=10,
     return viterbi(initial_conditions, state_transition, likelihood)
 
 
+def batch_linear_distance(track_graph, projected_track_positions, edge_ids,
+                          well_id):
+
+    copy_graph = track_graph.copy()
+    linear_distance = []
+
+    for (x3, y3), (node1, node2) in zip(
+            projected_track_positions, edge_ids):
+
+        x1, y1 = copy_graph.nodes[node1]['pos']
+        left_distance = sqrt((x3 - x1)**2 + (y3 - y1)**2)
+        nx.add_path(copy_graph, [node1, 'projected'], distance=left_distance)
+
+        x2, y2 = copy_graph.nodes[node2]['pos']
+        right_distance = sqrt((x3 - x2)**2 + (y3 - y2)**2)
+        nx.add_path(copy_graph, ['projected', node2], distance=right_distance)
+
+        linear_distance.append(
+            nx.shortest_path_length(copy_graph, source=well_id,
+                                    target='projected', weight='distance'))
+        copy_graph.remove_node('projected')
+
+    return linear_distance
+
+
 def calculate_linear_distance(track_graph, track_segment_id, well_id,
                               position):
     '''Finds the path distance along a graph relative to a node.
@@ -363,7 +388,8 @@ def calculate_linear_distance(track_graph, track_segment_id, well_id,
         Linear distance from well specified by `well_id`
 
     '''
-    track_segment_id[np.isnan(track_segment_id)] = 0
+    is_nan = np.isnan(track_segment_id)
+    track_segment_id[np.isnan(track_segment_id)] = 0  # need to check
     track_segment_id = track_segment_id.astype(int)
 
     track_segments = get_track_segments_from_graph(track_graph)
@@ -376,21 +402,13 @@ def calculate_linear_distance(track_graph, track_segment_id, well_id,
 
     linear_distance = []
 
-    for projected_position, edge_id in zip(
-            projected_track_positions, edge_ids):
-        node1, node2 = edge_id
-        nx.add_path(track_graph, [node1, 'projected', node2])
-        track_graph.nodes['projected']['pos'] = tuple(projected_position)
-
-        # calculate distance
-        for edge in track_graph.edges(data=True):
-            track_graph.edges[edge[:2]]['distance'] = np.linalg.norm(
-                track_graph.nodes[edge[0]]['pos'] -
-                np.array(track_graph.nodes[edge[1]]['pos']))
-
+    for time_ind in batch(n_time, batch_size=10_000):
         linear_distance.append(
-            nx.shortest_path_length(track_graph, source='projected',
-                                    target=well_id, weight='distance'))
-        track_graph.remove_node('projected')
+            batch_linear_distance(
+                track_graph, projected_track_positions[time_ind],
+                edge_ids[time_ind], well_id))
+    linear_distance = np.concatenate(dask.compute(
+        *linear_distance, scheduler='processes'))
+    linear_distance[is_nan] = np.nan
 
-    return np.array(linear_distance)
+    return linear_distance
