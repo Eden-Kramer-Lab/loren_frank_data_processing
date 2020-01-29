@@ -45,7 +45,8 @@ def get_position_dataframe(epoch_key, animals, use_hmm=True,
                            sensor_std_dev=5,
                            diagonal_bias=1E-1,
                            edge_spacing=EDGE_SPACING,
-                           edge_order=EDGE_ORDER):
+                           edge_order=EDGE_ORDER,
+                           skip_linearization=False):
     '''Returns a list of position dataframes with a length corresponding
      to the number of epochs in the epoch key -- either a tuple or a
     list of tuples with the format (animal, day, epoch_number)
@@ -67,17 +68,18 @@ def get_position_dataframe(epoch_key, animals, use_hmm=True,
 
     '''
     position_df = _get_pos_dataframe(epoch_key, animals)
-    if use_hmm:
-        position_df = _get_linear_position_hmm(
-            epoch_key, animals, position_df,
-            max_distance_from_well, route_euclidean_distance_scaling,
-            min_distance_traveled, sensor_std_dev, diagonal_bias,
-            edge_order=edge_order, edge_spacing=edge_spacing)
-    else:
-        linear_position_df = _get_linpos_dataframe(
-            epoch_key, animals, edge_order=edge_order,
-            edge_spacing=edge_spacing)
-        position_df = position_df.join(linear_position_df)
+    if not skip_linearization:
+        if use_hmm:
+            position_df = _get_linear_position_hmm(
+                epoch_key, animals, position_df,
+                max_distance_from_well, route_euclidean_distance_scaling,
+                min_distance_traveled, sensor_std_dev, diagonal_bias,
+                edge_order=edge_order, edge_spacing=edge_spacing)
+        else:
+            linear_position_df = _get_linpos_dataframe(
+                epoch_key, animals, edge_order=edge_order,
+                edge_spacing=edge_spacing)
+            position_df = position_df.join(linear_position_df)
 
     return position_df
 
@@ -327,55 +329,25 @@ def get_interpolated_position_dataframe(epoch_key, animals,
         epoch_key, animals, use_hmm, max_distance_from_well,
         route_euclidean_distance_scaling, min_distance_traveled,
         sensor_std_dev, diagonal_bias, edge_order=edge_order,
-        edge_spacing=edge_spacing)
-    position_df = position_df.drop(
-        ['linear_position'], axis=1)
+        edge_spacing=edge_spacing, skip_linearization=True)
 
-    CONTINUOUS_COLUMNS = ['head_direction', 'speed', 'linear_distance',
-                          'x_position', 'y_position',
-                          'linear_speed', 'linear_velocity']
-    position_categorical = (position_df
-                            .drop(CONTINUOUS_COLUMNS, axis=1, errors='ignore')
-                            .reindex(index=time, method='pad'))
-    position_categorical['is_correct'] = (
-        position_categorical.is_correct.fillna(False))
-
-    CATEGORICAL_COLUMNS = ['labeled_segments', 'from_well', 'to_well', 'task',
-                           'is_correct', 'turn', 'track_segment_id',
-                           'arm_name']
-    position_continuous = position_df.drop(CATEGORICAL_COLUMNS, axis=1,
-                                           errors='ignore')
     new_index = pd.Index(np.unique(np.concatenate(
-        (position_continuous.index, time))), name='time')
-    interpolated_position = (position_continuous
-                             .reindex(index=new_index)
-                             .interpolate(method='linear')
-                             .reindex(index=time))
-    track_graph, center_well_id = make_track_graph(epoch_key, animals)
-    node_linear_position, node_linear_distance = get_graph_1D_2D_relationships(
-        track_graph, edge_order, edge_spacing, center_well_id)
+        (position_df.index, time))), name='time')
+    position_df = (position_df
+                   .reindex(index=new_index)
+                   .interpolate(method='linear')
+                   .reindex(index=time))
 
-    interpolated_position.loc[interpolated_position.speed < 0, 'speed'] = 0.0
-    interpolated_position.loc[
-        interpolated_position.linear_speed < 0, 'linear_speed'] = 0.0
+    position_df.loc[position_df.speed < 0, 'speed'] = 0.0
 
-    position_info = position_categorical.join(interpolated_position)
-
-    position_info['linear_position'] = _calulcate_linear_position(
-        position_info.linear_distance.values,
-        position_info.track_segment_id.values, track_graph, center_well_id,
+    position_df = _get_linear_position_hmm(
+        epoch_key, animals, position_df,
+        max_distance_from_well, route_euclidean_distance_scaling,
+        min_distance_traveled, sensor_std_dev, diagonal_bias,
         edge_order=edge_order, edge_spacing=edge_spacing)
+    position_df['is_correct'] = position_df.is_correct.fillna(False)
 
-    for id, (min_lin_dist, max_lin_dist) in enumerate(node_linear_position):
-        position_info.loc[
-            (position_info.track_segment_id == edge_order[id]) &
-            (position_info.linear_position < min_lin_dist),
-            'linear_position'] = min_lin_dist
-        position_info.loc[
-            (position_info.track_segment_id == edge_order[id]) &
-            (position_info.linear_position > max_lin_dist),
-            'linear_position'] = max_lin_dist
-    return position_info
+    return position_df
 
 
 def get_well_locations(epoch_key, animals):
