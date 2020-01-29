@@ -282,6 +282,7 @@ def _get_linear_position_hmm(epoch_key, animals, position_df,
         position_df.linear_distance, smooth_duration=0.500,
         sampling_frequency=29)
     position_df['linear_speed'] = np.abs(position_df.linear_velocity)
+    position_df['is_correct'] = position_df.is_correct.fillna(False)
 
     return position_df
 
@@ -326,10 +327,7 @@ def get_interpolated_position_dataframe(epoch_key, animals,
     '''
     time = time_function(epoch_key, animals)
     position_df = get_position_dataframe(
-        epoch_key, animals, use_hmm, max_distance_from_well,
-        route_euclidean_distance_scaling, min_distance_traveled,
-        sensor_std_dev, diagonal_bias, edge_order=edge_order,
-        edge_spacing=edge_spacing, skip_linearization=True)
+        epoch_key, animals, skip_linearization=True)
 
     new_index = pd.Index(np.unique(np.concatenate(
         (position_df.index, time))), name='time')
@@ -345,7 +343,6 @@ def get_interpolated_position_dataframe(epoch_key, animals,
         max_distance_from_well, route_euclidean_distance_scaling,
         min_distance_traveled, sensor_std_dev, diagonal_bias,
         edge_order=edge_order, edge_spacing=edge_spacing)
-    position_df['is_correct'] = position_df.is_correct.fillna(False)
 
     return position_df
 
