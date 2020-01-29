@@ -1,5 +1,6 @@
 from math import sqrt
 
+import dask
 import networkx as nx
 import numpy as np
 import scipy.stats
@@ -121,48 +122,75 @@ def route_distance(candidates_t_1, candidates_t, track_graph):
     n_segments = len(track_graph.edges)
     if np.any(np.isnan(candidates_t) | np.isnan(candidates_t)):
         return np.full((n_segments, n_segments), np.nan)
-    track_graph1 = track_graph.copy()
-
+    node_names = []
+    edges = list(track_graph.edges.keys())
+    n_original_nodes = len(track_graph.nodes)
     # insert virtual node
     for edge_number, (position_t, position_t_1, (node1, node2)) in enumerate(
-            zip(candidates_t, candidates_t_1, track_graph.edges)):
+            zip(candidates_t, candidates_t_1, edges)):
         node_name_t, node_name_t_1 = f't_0_{edge_number}', f't_1_{edge_number}'
-        nx.add_path(track_graph1, [node1, node_name_t, node2])
-        nx.add_path(track_graph1, [node1, node_name_t_1, node2])
-        nx.add_path(track_graph1, [node_name_t, node_name_t_1])
-        track_graph1.nodes[node_name_t]['pos'] = tuple(position_t)
-        track_graph1.nodes[node_name_t_1]['pos'] = tuple(position_t_1)
+        node_names.append(node_name_t)
+        node_names.append(node_name_t_1)
+        nx.add_path(track_graph, [node1, node_name_t, node2])
+        nx.add_path(track_graph, [node1, node_name_t_1, node2])
+        nx.add_path(track_graph, [node_name_t, node_name_t_1])
+        track_graph.nodes[node_name_t]['pos'] = tuple(position_t)
+        track_graph.nodes[node_name_t_1]['pos'] = tuple(position_t_1)
 
     # calculate distance
-    for node1, node2 in track_graph1.edges:
-        x1, y1 = track_graph1.nodes[node1]['pos']
-        x2, y2 = track_graph1.nodes[node2]['pos']
-        track_graph1.edges[(node1, node2)]['distance'] = sqrt(
+    for node1, node2 in track_graph.edges:
+        x1, y1 = track_graph.nodes[node1]['pos']
+        x2, y2 = track_graph.nodes[node2]['pos']
+        track_graph.edges[(node1, node2)]['distance'] = sqrt(
             (x2 - x1)**2 + (y2 - y1)**2)
 
     # calculate path distance
     path_distance = scipy.sparse.csgraph.dijkstra(
-        nx.to_scipy_sparse_matrix(track_graph1, weight='distance'))
-
-    n_original_nodes, n_total_nodes = (
-        len(track_graph.nodes), len(track_graph1.nodes))
+        nx.to_scipy_sparse_matrix(track_graph, weight='distance'))
+    n_total_nodes = len(track_graph.nodes)
     node_ind = np.arange(n_total_nodes)
     start_node_ind = node_ind[n_original_nodes::2]
     end_node_ind = node_ind[n_original_nodes + 1::2]
 
+    track_graph.remove_nodes_from(node_names)
+
     return path_distance[start_node_ind][:, end_node_ind]
+
+
+def batch(n_samples, batch_size=1):
+    for ind in range(0, n_samples, batch_size):
+        yield range(ind, min(ind + batch_size, n_samples))
+
+
+@dask.delayed
+def batch_route_distance(track_graph, projected_track_position_t,
+                         projected_track_position_t_1):
+    copy_graph = track_graph.copy()
+    distances = [route_distance(p_t, p_t_1, copy_graph)
+                 for p_t, p_t_1 in zip(projected_track_position_t,
+                                       projected_track_position_t_1)]
+    return np.stack(distances)
 
 
 def route_distance_change(position, track_graph):
     track_segments = get_track_segments_from_graph(track_graph)
     projected_track_position = project_points_to_segment(
         track_segments, position)
-    distances = [route_distance(p_t, p_t_1, track_graph)
-                 for p_t, p_t_1 in zip(projected_track_position[1:],
-                                       projected_track_position[:-1])]
-    distances = np.stack(distances)
-    return np.concatenate(
-        (np.full((1, *distances.shape[1:]), np.nan), distances))
+    n_segments = len(track_segments)
+
+    distances = [np.full((1, n_segments, n_segments), np.nan)]
+    projected_track_position_t = projected_track_position[1:]
+    projected_track_position_t_1 = projected_track_position[:-1]
+    n_time = projected_track_position_t.shape[0]
+
+    for time_ind in batch(n_time, batch_size=10_000):
+        distances.append(
+            batch_route_distance(
+                track_graph, projected_track_position_t[time_ind],
+                projected_track_position_t_1[time_ind]))
+
+    return np.concatenate(dask.compute(
+        *distances, scheduler='processes'), axis=0)
 
 
 def calculate_position_likelihood(position, track_graph, sigma=10):
@@ -350,20 +378,19 @@ def calculate_linear_distance(track_graph, track_segment_id, well_id,
 
     for projected_position, edge_id in zip(
             projected_track_positions, edge_ids):
-        track_graph1 = track_graph.copy()
         node1, node2 = edge_id
-        nx.add_path(track_graph1, [node1, 'projected', node2])
-        track_graph1.remove_edge(node1, node2)
-        track_graph1.nodes['projected']['pos'] = tuple(projected_position)
+        nx.add_path(track_graph, [node1, 'projected', node2])
+        track_graph.nodes['projected']['pos'] = tuple(projected_position)
 
         # calculate distance
-        for edge in track_graph1.edges(data=True):
-            track_graph1.edges[edge[:2]]['distance'] = np.linalg.norm(
-                track_graph1.nodes[edge[0]]['pos'] -
-                np.array(track_graph1.nodes[edge[1]]['pos']))
+        for edge in track_graph.edges(data=True):
+            track_graph.edges[edge[:2]]['distance'] = np.linalg.norm(
+                track_graph.nodes[edge[0]]['pos'] -
+                np.array(track_graph.nodes[edge[1]]['pos']))
 
         linear_distance.append(
-            nx.shortest_path_length(track_graph1, source='projected',
+            nx.shortest_path_length(track_graph, source='projected',
                                     target=well_id, weight='distance'))
+        track_graph.remove_node('projected')
 
     return np.array(linear_distance)
