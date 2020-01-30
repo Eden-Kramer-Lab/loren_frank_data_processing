@@ -35,8 +35,8 @@ def load_task(file_name, animal):
           for name in epoch.dtype.names
           if name in ['environment', 'type']}
          for epoch in epochs]).set_index(index).assign(
-            environment=lambda df: df.environment.astype(str),
-            type=lambda df: df.type.astype(str))
+        environment=lambda df: df.environment.astype(str),
+        type=lambda df: df.type.astype(str))
 
 
 def _count_exposure(df):
@@ -46,7 +46,7 @@ def _count_exposure(df):
 
 def compute_exposure(epoch_info):
     df = epoch_info.groupby(['animal', 'environment']).apply(
-                _count_exposure)
+        _count_exposure)
     df['exposure'] = df.exposure.where(
         ~epoch_info.type.isin(['sleep', 'rest', 'nan', 'failed sleep']))
     return df

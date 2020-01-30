@@ -4,10 +4,9 @@ import dask
 import numpy as np
 import pandas as pd
 import xarray as xr
-from scipy.io import loadmat
-
 from loren_frank_data_processing.core import get_data_filename, logger
 from loren_frank_data_processing.tetrodes import get_trial_time
+from scipy.io import loadmat
 
 
 def get_multiunit_dataframe(tetrode_key, animals):
@@ -185,4 +184,4 @@ def get_all_multiunit_indicators(tetrode_keys, animals,
 
     return (xr.concat(
         dask.compute(*multiunit_dfs, scheduler='threads'), dim='tetrodes')
-            .transpose('time', 'features', 'tetrodes'))
+        .transpose('time', 'features', 'tetrodes'))
