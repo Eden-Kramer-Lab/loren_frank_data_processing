@@ -133,7 +133,7 @@ def reconstruct_time(start_time, n_samples, sampling_frequency):
         start=pd.Timedelta(start_time, unit='s'),
         end=pd.Timedelta(start_time + (n_samples - 1) / sampling_frequency,
                          unit='s'),
-        periods=n_samples, unit='s', name='time')
+        periods=n_samples, name='time')
 
 
 def _convert_to_dict(struct_array):
