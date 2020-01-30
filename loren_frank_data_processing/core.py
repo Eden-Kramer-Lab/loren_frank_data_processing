@@ -129,7 +129,7 @@ def reconstruct_time(start_time, n_samples, sampling_frequency):
     time : pandas Index
 
     '''
-    return pd.TimedeltaIndex(
+    return pd.timedelta_range(
         start=pd.Timedelta(start_time, unit='s'),
         end=pd.Timedelta(start_time + (n_samples - 1) / sampling_frequency,
                          unit='s'),
