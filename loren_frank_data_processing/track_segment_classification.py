@@ -270,9 +270,11 @@ def viterbi(initial_conditions, state_transition, likelihood):
     state_id : ndarray, shape (n_time,)
 
     '''
-    is_nan = np.any(np.isnan(likelihood), axis=1)
-    log_likelihood = np.log(likelihood.copy()[~is_nan])
-    state_transition = np.log(state_transition.copy()[~is_nan])
+    is_bad = (np.any(np.isnan(likelihood), axis=1) |
+              np.any(np.isnan(state_transition), axis=(1, 2)) |
+              np.any(np.isinf(np.log(likelihood)), axis=1))
+    log_likelihood = np.log(likelihood.copy()[~is_bad])
+    state_transition = np.log(state_transition.copy()[~is_bad])
 
     n_time, n_states = log_likelihood.shape
     posterior = np.zeros((n_time, n_states))
@@ -297,8 +299,8 @@ def viterbi(initial_conditions, state_transition, likelihood):
         most_probable_state_ind[time_ind] = max_state_ind[
             time_ind + 1, most_probable_state_ind[time_ind + 1]]
 
-    most_probable_state_ind_with_nan = np.full((is_nan.size,), np.nan)
-    most_probable_state_ind_with_nan[~is_nan] = most_probable_state_ind
+    most_probable_state_ind_with_nan = np.full((is_bad.size,), np.nan)
+    most_probable_state_ind_with_nan[~is_bad] = most_probable_state_ind
     return most_probable_state_ind_with_nan
 
 
