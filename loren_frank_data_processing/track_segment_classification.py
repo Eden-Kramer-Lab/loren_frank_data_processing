@@ -388,6 +388,7 @@ def calculate_linear_distance(track_graph, track_segment_id, well_id,
     -------
     linear_distance : ndarray, shape (n_time,)
         Linear distance from well specified by `well_id`
+    projected_track_positions : ndarray, shape (n_time,)
 
     '''
     is_nan = np.isnan(track_segment_id)
@@ -413,4 +414,4 @@ def calculate_linear_distance(track_graph, track_segment_id, well_id,
         *linear_distance, scheduler='processes'))
     linear_distance[is_nan] = np.nan
 
-    return linear_distance
+    return linear_distance, projected_track_positions
