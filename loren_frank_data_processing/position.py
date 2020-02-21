@@ -256,8 +256,8 @@ def _get_linear_position_hmm(epoch_key, animals, position_df,
         sensor_std_dev=sensor_std_dev,
         diagonal_bias=diagonal_bias)
     (position_df['linear_distance'],
-     position_df['projected_track_position_x'],
-     position_df['projected_track_position_y']) = calculate_linear_distance(
+     position_df['projected_x_position'],
+     position_df['projected_y_position']) = calculate_linear_distance(
         track_graph, track_segment_id, center_well_id, position)
     position_df['track_segment_id'] = track_segment_id
     SEGMENT_ID_TO_ARM_NAME = {0.0: 'Center Arm',
