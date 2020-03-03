@@ -3,13 +3,13 @@
 from setuptools import find_packages, setup
 
 INSTALL_REQUIRES = ['numpy >= 1.11', 'pandas >= 0.18.0', 'scipy', 'xarray',
-                    'netCDF4', 'dask', 'networkx >= 2.0.0', 'ffmpeg',
+                    'netCDF4', 'dask', 'networkx >= 2.0.0',
                     'matplotlib']
 TESTS_REQUIRE = ['pytest >= 2.7.1']
 
 setup(
     name='loren_frank_data_processing',
-    version='0.9.6.dev0',
+    version='0.9.7.dev0',
     license='GPL-3.0',
     description=('Import data from Loren Frank lab'),
     author='Eric Denovellis',
