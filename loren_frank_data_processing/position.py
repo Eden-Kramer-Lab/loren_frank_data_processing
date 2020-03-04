@@ -383,7 +383,7 @@ def get_track_segments(epoch_key, animals):
     '''
     animal, day, epoch = epoch_key
     task_file = get_data_structure(animals[animal], day, 'task', 'task')
-    linearcoord = task_file[epoch - 1]['linearcoord'][0, 0].squeeze()
+    linearcoord = task_file[epoch - 1]['linearcoord'][0, 0].squeeze(axis=0)
     track_segments = [np.stack(((arm[:-1, :, 0], arm[1:, :, 0])), axis=1)
                       for arm in linearcoord]
     center_well_position = track_segments[0][0][0]
