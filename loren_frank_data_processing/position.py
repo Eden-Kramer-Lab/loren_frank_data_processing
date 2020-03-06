@@ -418,7 +418,7 @@ def make_track_graph(epoch_key, animals):
         edges[edge_ind] = node_id
 
     edge_distances = np.linalg.norm(
-        np.diff(track_segments, axis=-2).squeeze(), axis=1)
+        np.diff(track_segments, axis=-2).squeeze(axis=-2), axis=1)
 
     track_graph = nx.Graph()
 
