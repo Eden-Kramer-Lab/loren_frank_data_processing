@@ -50,7 +50,7 @@ def project_points_to_segment(track_segments, position):
     projected_positions : ndarray, shape (n_time, n_segments, n_space)
 
     '''
-    segment_diff = np.diff(track_segments, axis=1).squeeze()
+    segment_diff = np.diff(track_segments, axis=1).squeeze(axis=1)
     sum_squares = np.sum(segment_diff ** 2, axis=1)
     node1 = track_segments[:, 0, :]
     nx = (np.sum(segment_diff *
