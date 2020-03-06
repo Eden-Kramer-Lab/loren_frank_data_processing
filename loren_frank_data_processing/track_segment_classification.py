@@ -393,7 +393,7 @@ def calculate_linear_distance(track_graph, track_segment_id, well_id,
 
     '''
     is_nan = np.isnan(track_segment_id)
-    track_segment_id[np.isnan(track_segment_id)] = -1  # need to check
+    track_segment_id[is_nan] = 0  # need to check
     track_segment_id = track_segment_id.astype(int)
 
     track_segments = get_track_segments_from_graph(track_graph)
