@@ -402,7 +402,7 @@ def calculate_linear_distance(track_graph, track_segment_id, well_id,
     n_time = projected_track_positions.shape[0]
     projected_track_positions = projected_track_positions[(
         np.arange(n_time), track_segment_id)]
-    edge_ids = np.array(track_graph.edges)[track_segment_id]
+    edge_ids = np.asarray(list(track_graph.edges))[track_segment_id]
 
     linear_distance = []
 
