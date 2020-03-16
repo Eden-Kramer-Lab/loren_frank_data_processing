@@ -271,7 +271,6 @@ def viterbi(initial_conditions, state_transition, likelihood):
 
     '''
     is_bad = (np.any(np.isnan(likelihood), axis=1) |
-              np.any(np.isnan(state_transition), axis=(1, 2)) |
               np.any(np.isinf(np.log(likelihood)), axis=1))
     log_likelihood = np.log(likelihood.copy()[~is_bad])
     state_transition = np.log(state_transition.copy()[~is_bad])
