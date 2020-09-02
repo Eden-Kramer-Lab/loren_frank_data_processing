@@ -105,25 +105,22 @@ def get_spike_indicator_dataframe(neuron_key, animals,
     time = time_function(neuron_key[:3], animals)
     spikes_df = get_spikes_dataframe(neuron_key, animals)
     time_index = np.digitize(spikes_df.index.total_seconds(),
-                             time.total_seconds())
-    time_index[time_index >= len(time)] = len(time) - 1
+                             time.total_seconds()[1:-1])
     return (spikes_df.groupby(time[time_index]).sum()
             .reindex(index=time, fill_value=0))
 
 
 @dask.delayed
 def _get_indicator(neuron_key, animals, time):
-    n_time = time.size
     spikes_df = get_spikes_dataframe(neuron_key, animals)
     try:
         spike_time_ind = np.digitize(
-            spikes_df.index.total_seconds(), time.total_seconds())
-        spike_time_ind = spike_time_ind[spike_time_ind < n_time]
-        return (spikes_df.iloc[spike_time_ind < n_time]
+            spikes_df.index.total_seconds(), time.total_seconds()[1:-1])
+        return (spikes_df
                 .groupby(time[spike_time_ind]).sum()
                 .reindex(index=time, fill_value=0))
     except AttributeError:
-        logger.debug(f'No spikes. Skipping...')
+        logger.debug('No spikes. Skipping...')
 
 
 def get_all_spike_indicators(neuron_keys, animals,
