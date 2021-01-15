@@ -13,7 +13,7 @@ from .core import _convert_to_dict, get_data_filename, logger
 from .tetrodes import get_trial_time
 
 
-def make_neuron_dataframe(animals):
+def make_neuron_dataframe(animals, exclude_animals=None):
     '''Information about all recorded neurons such as brain area.
 
     The index of the dataframe corresponds to the unique key for that neuron
@@ -24,14 +24,19 @@ def make_neuron_dataframe(animals):
     animals : dict of named-tuples
         Dictionary containing information about the directory for each
         animal. The key is the animal_short_name.
+    exclude_animals : list or None
+        Filter animals dictionary
 
     Returns
     -------
     neuron_information : pandas.DataFrame
 
     '''
+    if exclude_animals is None:
+        exclude_animals = []
     neuron_file_names = [(get_neuron_info_path(animals[animal]), animal)
-                         for animal in animals]
+                         for animal in animals
+                         if animal not in exclude_animals]
     neuron_data = [(loadmat(file_name[0]), file_name[1])
                    for file_name in neuron_file_names]
     return pd.concat([
