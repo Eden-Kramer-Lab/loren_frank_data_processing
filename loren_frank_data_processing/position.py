@@ -31,7 +31,7 @@ def _get_pos_dataframe(epoch_key, animals):
                      'smoothed_head_direction': 'head_direction',
                      'smoothed_speed': 'speed'}
         return (pd.DataFrame(
-            position_data[:, 5:], columns=FIELD_NAMES[5:], index=time)
+            position_data[:, 5:9], columns=FIELD_NAMES[5:9], index=time)
             .rename(columns=NEW_NAMES))
     else:
         return pd.DataFrame(position_data[:, 1:5], columns=FIELD_NAMES[1:5],
