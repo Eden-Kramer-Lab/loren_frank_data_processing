@@ -87,7 +87,7 @@ def get_multiunit_dataframe2(tetrode_key, animals):
         return (pd.DataFrame(multiunit, columns=column_names, index=time)
                 .loc[~is_duplicated]
                 .sort_index())
-    except (FileNotFoundError, TypeError):
+    except (FileNotFoundError, TypeError, IndexError):
         logger.warning('Failed to load file: {0}'.format(
             get_data_filename(animals[animal], day, 'marks')))
 
