@@ -122,7 +122,7 @@ def _get_indicator(neuron_key, animals, time):
         spike_time_ind = np.digitize(
             spikes_df.index.total_seconds(), time.total_seconds()[1:-1])
         return (spikes_df
-                .groupby(time[spike_time_ind].to_pytimedelta()).sum()
+                .groupby(time[spike_time_ind]).sum()
                 .reindex(index=time, fill_value=0))
     except AttributeError:
         logger.debug('No spikes. Skipping...')
