@@ -357,7 +357,7 @@ def get_well_locations(epoch_key, animals):
     '''
     animal, day, epoch = epoch_key
     task_file = get_data_structure(animals[animal], day, 'task', 'task')
-    linearcoord = task_file[epoch - 1]['linearcoord'][0, 0].squeeze()
+    linearcoord = task_file[epoch - 1]['linearcoord'][0, 0].squeeze(axis=0)
     well_locations = []
     for arm in linearcoord:
         well_locations.append(arm[0, :, 0])
