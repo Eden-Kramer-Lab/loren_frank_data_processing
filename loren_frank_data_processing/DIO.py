@@ -41,7 +41,6 @@ def get_DIO_indicator(epoch_key, animals, time_function=get_trial_time):
     time = time_function(epoch_key, animals)
     dio = get_DIO(epoch_key, animals)
     time_index = np.digitize(dio.index.total_seconds(),
-                             time.total_seconds())
-    time_index[time_index == time.size] = time.size - 1
+                             time.total_seconds()[1:-1])
     return (dio.groupby(time[time_index]).sum()
             .reindex(index=time, fill_value=0))
