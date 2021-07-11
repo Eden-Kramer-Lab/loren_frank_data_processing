@@ -2,15 +2,24 @@ from os.path import join
 
 import numpy as np
 import pandas as pd
+from loren_frank_data_processing.core import logger, reconstruct_time
 from scipy.io import loadmat
 
-from .core import logger, reconstruct_time
 
-
-def _convert_to_dict(struct_array):
+def squeeze_matcell(x):
     try:
-        return {name: struct_array[name].item()
-                for name in struct_array.dtype.names}
+        return x[0, 0][0, 0]
+    except IndexError:
+        try:
+            return x[0, 0][0]
+        except IndexError:
+            return x[0, 0]
+
+
+def _convert_to_dict(tetrode):
+    try:
+        return {name: squeeze_matcell(tetrode[name])
+                for name in tetrode.dtype.names}
     except TypeError:
         return {}
 
@@ -31,8 +40,7 @@ def get_tetrode_info_path(animal):
         The path to the information about the tetrodes for a given animal.
 
     '''
-    filename = '{animal.short_name}tetinfo.mat'.format(animal=animal)
-    return join(animal.directory, filename)
+    return join(animal.directory, f'{animal.short_name}tetinfo.mat')
 
 
 def get_LFP_dataframe(tetrode_key, animals):
@@ -83,43 +91,34 @@ def make_tetrode_dataframe(animals, epoch_key=None):
 
     """
     tetrode_info = []
+
     if epoch_key is not None:
         animal, day, epoch = epoch_key
         file_name = get_tetrode_info_path(animals[animal])
-        tet_info = loadmat(file_name, squeeze_me=True)["tetinfo"]
+        tet_info = loadmat(file_name, squeeze_me=False)[
+            "tetinfo"].squeeze(axis=0)
         tetrode_info.append(
             convert_tetrode_epoch_to_dataframe(
-                tet_info[day - 1][epoch - 1], epoch_key))
+                tet_info[day - 1].squeeze(axis=0)[epoch - 1].squeeze(axis=0),
+                epoch_key
+            )
+        )
         return pd.concat(tetrode_info, sort=True)
 
     for animal in animals.values():
         file_name = get_tetrode_info_path(animal)
-        tet_info = loadmat(file_name, squeeze_me=True)["tetinfo"]
-        try:
-            for day_ind, day in enumerate(tet_info):
-                try:
-                    for epoch_ind, epoch in enumerate(day):
-                        epoch_key = (
-                            animal.short_name,
-                            day_ind + 1,
-                            epoch_ind + 1,
-                        )  # noqa
-                        tetrode_info.append(
-                            convert_tetrode_epoch_to_dataframe(
-                                epoch, epoch_key)
-                        )
-                except IndexError:
-                    pass
-        except TypeError:
-            # Only one day of recording
-            try:
-                day_ind = 0
-                for epoch_ind, epoch in enumerate(tet_info):
-                    epoch_key = animal.short_name, day_ind + 1, epoch_ind + 1
-                    tetrode_info.append(
-                        convert_tetrode_epoch_to_dataframe(epoch, epoch_key))
-            except IndexError:
-                pass
+        tet_info = loadmat(file_name, squeeze_me=False)["tetinfo"]
+        for day_ind, day in enumerate(tet_info.squeeze(axis=0)):
+            for epoch_ind, epoch in enumerate(day.squeeze(axis=0)):
+                epoch_key = (
+                    animal.short_name,
+                    day_ind + 1,
+                    epoch_ind + 1,
+                )
+                tetrode_info.append(
+                    convert_tetrode_epoch_to_dataframe(
+                        epoch.squeeze(axis=0), epoch_key)
+                )
 
     return pd.concat(tetrode_info, sort=True)
 
@@ -158,7 +157,7 @@ def _get_tetrode_id(dataframe):
 
 
 def convert_tetrode_epoch_to_dataframe(tetrodes_in_epoch, epoch_key):
-    '''Convert tetrode information data structure to dataframe.
+    """Convert tetrode information data structure to dataframe.
 
     Parameters
     ----------
@@ -171,19 +170,18 @@ def convert_tetrode_epoch_to_dataframe(tetrodes_in_epoch, epoch_key):
     -------
     tetrode_info : dataframe
 
-    '''
+    """
     animal, day, epoch = epoch_key
     tetrode_dict_list = [_convert_to_dict(
         tetrode) for tetrode in tetrodes_in_epoch]
     return (pd.DataFrame(tetrode_dict_list)
-              .assign(animal=lambda x: animal)
-              .assign(day=lambda x: day)
-              .assign(epoch=lambda x: epoch)
-              .assign(tetrode_number=lambda x: x.index + 1)
-              .assign(tetrode_id=_get_tetrode_id)
-            # set index to identify rows
-              .set_index(['animal', 'day', 'epoch', 'tetrode_number'])
-              .sort_index()
+            .assign(animal=lambda x: animal)
+            .assign(day=lambda x: day)
+            .assign(epoch=lambda x: epoch)
+            .assign(tetrode_number=lambda x: x.index + 1)
+            .assign(tetrode_id=_get_tetrode_id)
+            .set_index(["animal", "day", "epoch", "tetrode_number"])
+            .sort_index()
             )
 
 
