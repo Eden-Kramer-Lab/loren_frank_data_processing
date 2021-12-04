@@ -125,7 +125,7 @@ def _get_indicator(neuron_key, animals, time):
                 .groupby(time[spike_time_ind]).sum()
                 .reindex(index=time, fill_value=0))
     except AttributeError:
-        return np.zeros_like(time)
+        return pd.Series(np.zeros_like(time), name=spikes_df.name)
 
 
 def get_all_spike_indicators(neuron_keys, animals,
