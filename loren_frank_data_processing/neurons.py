@@ -125,7 +125,7 @@ def _get_indicator(neuron_key, animals, time):
                 .groupby(time[spike_time_ind]).sum()
                 .reindex(index=time, fill_value=0))
     except AttributeError:
-        logger.debug('No spikes. Skipping...')
+        return np.zeros_like(time)
 
 
 def get_all_spike_indicators(neuron_keys, animals,
