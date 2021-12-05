@@ -125,13 +125,13 @@ def _get_indicator(neuron_key, animals, time):
                 .groupby(time[spike_time_ind]).sum()
                 .reindex(index=time, fill_value=0))
     except AttributeError:
-        return pd.Series(np.zeros_like(time), name=spikes_df.name)
+        return (pd.Series(np.zeros_like(time), name=spikes_df.name, index=time)
 
 
 def get_all_spike_indicators(neuron_keys, animals,
                              time_function=get_trial_time):
-    time = time_function(neuron_keys[0][:3], animals)
-    spikes_dfs = []
+    time=time_function(neuron_keys[0][:3], animals)
+    spikes_dfs=[]
     for neuron_key in neuron_keys:
         spikes_dfs.append(_get_indicator(neuron_key, animals, time))
 
@@ -143,7 +143,7 @@ def convert_neuron_epoch_to_dataframe(tetrodes_in_epoch, animal, day,
     '''
     Given an neuron data structure, return a cleaned up DataFrame
     '''
-    DROP_COLUMNS = ['ripmodtag', 'thetamodtag', 'runripmodtag',
+    DROP_COLUMNS=['ripmodtag', 'thetamodtag', 'runripmodtag',
                     'postsleepripmodtag', 'presleepripmodtag',
                     'runthetamodtag', 'ripmodtag2', 'runripmodtag2',
                     'postsleepripmodtag2', 'presleepripmodtag2',
@@ -153,10 +153,10 @@ def convert_neuron_epoch_to_dataframe(tetrodes_in_epoch, animal, day,
                     'tag', 'typetag', 'runripmodtype2',
                     'tag2', 'ripmodtype2', 'descrip']
 
-    NEURON_INDEX = ['animal', 'day', 'epoch',
+    NEURON_INDEX=['animal', 'day', 'epoch',
                     'tetrode_number', 'neuron_number']
 
-    neuron_dict_list = [_add_to_dict(
+    neuron_dict_list=[_add_to_dict(
         _convert_to_dict(neuron), tetrode_ind, neuron_ind)
         for tetrode_ind, tetrode in enumerate(
         tetrodes_in_epoch[0][0])
@@ -191,7 +191,7 @@ def get_neuron_info_path(animal):
     path : str
 
     '''
-    filename = '{animal.short_name}cellinfo.mat'.format(animal=animal)
+    filename='{animal.short_name}cellinfo.mat'.format(animal=animal)
     return join(animal.directory, filename)
 
 
@@ -205,6 +205,6 @@ def _get_neuron_id(dataframe):
 
 
 def _add_to_dict(dictionary, tetrode_ind, neuron_ind):
-    dictionary['tetrode_number'] = tetrode_ind + 1
-    dictionary['neuron_number'] = neuron_ind + 1
+    dictionary['tetrode_number']=tetrode_ind + 1
+    dictionary['neuron_number']=neuron_ind + 1
     return dictionary
