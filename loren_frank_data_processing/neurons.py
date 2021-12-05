@@ -4,7 +4,6 @@ spike indicators.
 
 from os.path import join
 
-import dask
 import numpy as np
 import pandas as pd
 from scipy.io import loadmat
@@ -115,27 +114,37 @@ def get_spike_indicator_dataframe(neuron_key, animals,
             .reindex(index=time, fill_value=0))
 
 
-@dask.delayed
-def _get_indicator(neuron_key, animals, time):
-    spikes_df = get_spikes_dataframe(neuron_key, animals)
-    try:
-        spike_time_ind = np.digitize(
-            spikes_df.index.total_seconds(), time.total_seconds()[1:-1])
-        return (spikes_df
-                .groupby(time[spike_time_ind]).sum()
-                .reindex(index=time, fill_value=0))
-    except AttributeError:
-        return pd.Series(np.zeros_like(time), name=spikes_df.name, index=time)
-
-
 def get_all_spike_indicators(neuron_keys, animals,
                              time_function=get_trial_time):
     time = time_function(neuron_keys[0][:3], animals)
-    spikes_dfs = []
-    for neuron_key in neuron_keys:
-        spikes_dfs.append(_get_indicator(neuron_key, animals, time))
 
-    return pd.concat(dask.compute(*spikes_dfs, scheduler='threads'), axis=1)
+    animal, day, _, _, _ = neuron_keys[0]
+    try:
+        neuron_file = loadmat(
+            get_data_filename(animals[animal], day, 'spikes'))
+    except (FileNotFoundError, TypeError):
+        logger.warning('Failed to load file: {0}'.format(
+            get_data_filename(animals[animal], day, 'spikes')))
+
+    neuron_names = []
+    bin_counts = []
+    for neuron_key in neuron_keys:
+        animal, day, epoch, tetrode_number, neuron_number = neuron_key
+        neuron_names.append(
+            f'{animal}_{day:02d}_{epoch:02}_{tetrode_number:03}_{neuron_number:03}')
+        try:
+            spike_time = neuron_file['spikes'][0, -1][0, epoch - 1][
+                0, tetrode_number - 1][0, neuron_number - 1][0]['data'][0][
+                :, 0]
+            bin_counts.append(
+                np.bincount(
+                    np.digitize(spike_time, time.total_seconds()[1:-1]),
+                    minlength=time.shape[0]))
+        except IndexError:
+            bin_counts.append(np.zeros_like(time))
+
+    return pd.DataFrame(np.stack(bin_counts, axis=1), columns=neuron_names,
+                        index=time)
 
 
 def convert_neuron_epoch_to_dataframe(tetrodes_in_epoch, animal, day,
