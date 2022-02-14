@@ -100,16 +100,21 @@ def get_spike_indicator_dataframe(neuron_key, animals,
     time_function : function, optional
         Function that take an epoch key (animal_short_name, day, epoch) that
         defines the time the multiunits are relative to. Defaults to using
-        the time the LFPs are sampled at.
+        the time the LFPs are s ampled at.
 
     Returns
     ---
 
     '''
     time = time_function(neuron_key[:3], animals)
+    time_in_seconds = time.total_seconds()
+
     spikes_df = get_spikes_dataframe(neuron_key, animals)
-    time_index = np.digitize(spikes_df.index.total_seconds(),
-                             time.total_seconds()[1:-1])
+    spike_times = spikes_df.index.total_seconds()
+    is_in_time = (spike_times >= time_in_seconds[0]) & (
+        spike_times < time_in_seconds[-1])
+    time_index = np.digitize(spike_times[is_in_time],
+                             time_in_seconds[1:-1])
     return (spikes_df.groupby(time[time_index].to_pytimedelta()).sum()
             .reindex(index=time, fill_value=0))
 
@@ -117,6 +122,7 @@ def get_spike_indicator_dataframe(neuron_key, animals,
 def get_all_spike_indicators(neuron_keys, animals,
                              time_function=get_trial_time):
     time = time_function(neuron_keys[0][:3], animals)
+    time_in_seconds = time.total_seconds()
 
     animal, day, _, _, _ = neuron_keys[0]
     try:
@@ -133,12 +139,15 @@ def get_all_spike_indicators(neuron_keys, animals,
         neuron_names.append(
             f'{animal}_{day:02d}_{epoch:02}_{tetrode_number:03}_{neuron_number:03}')
         try:
-            spike_time = neuron_file['spikes'][0, -1][0, epoch - 1][
+            spike_times = neuron_file['spikes'][0, -1][0, epoch - 1][
                 0, tetrode_number - 1][0, neuron_number - 1][0]['data'][0][
                 :, 0]
+            is_in_time = ((spike_times >= time_in_seconds[0]) &
+                          (spike_times < time_in_seconds[-1]))
             bin_counts.append(
                 np.bincount(
-                    np.digitize(spike_time, time.total_seconds()[1:-1]),
+                    np.digitize(spike_times[is_in_time],
+                                time_in_seconds[1:-1]),
                     minlength=time.shape[0]))
         except IndexError:
             bin_counts.append(np.zeros_like(time, dtype=np.float64))
