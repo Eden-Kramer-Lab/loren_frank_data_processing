@@ -1,6 +1,6 @@
-'''Functions for accessing data in the Frank lab format and saving
+"""Functions for accessing data in the Frank lab format and saving
 
-'''
+"""
 from collections import namedtuple
 from logging import getLogger
 from os.path import join
@@ -11,11 +11,11 @@ from scipy.io import loadmat
 
 logger = getLogger(__name__)
 
-Animal = namedtuple('Animal', {'directory', 'short_name'})
+Animal = namedtuple("Animal", {"directory", "short_name"})
 
 
 def get_data_filename(animal, day, file_type):
-    '''Returns the Matlab file name assuming it is in the Raw Data
+    """Returns the Matlab file name assuming it is in the Raw Data
     directory.
 
     Parameters
@@ -33,16 +33,15 @@ def get_data_filename(animal, day, file_type):
     filename : str
         Path to data file
 
-    '''
-    filename = '{animal.short_name}{file_type}{day:02d}.mat'.format(
-        animal=animal,
-        file_type=file_type,
-        day=day)
+    """
+    filename = "{animal.short_name}{file_type}{day:02d}.mat".format(
+        animal=animal, file_type=file_type, day=day
+    )
     return join(animal.directory, filename)
 
 
 def get_epochs(animal, day):
-    '''For a given recording day and animal, get the three-element epoch
+    """For a given recording day and animal, get the three-element epoch
     key that uniquely identifys the recording epochs in that day.
 
     Parameters
@@ -67,20 +66,22 @@ def get_epochs(animal, day):
     >>> day = 2
     >>> get_epochs(animal, day)
 
-    '''
+    """
     try:
-        task_file = loadmat(
-            get_data_filename(animal, day, 'task'))
-        return [(animal, day, ind + 1)
-                for ind, epoch in enumerate(task_file['task'][0, -1][0])]
+        task_file = loadmat(get_data_filename(animal, day, "task"))
+        return [
+            (animal, day, ind + 1)
+            for ind, epoch in enumerate(task_file["task"][0, -1][0])
+        ]
     except (IOError, TypeError):
-        logger.warn('Failed to load file {0}'.format(
-            get_data_filename(animal, day, 'task')))
+        logger.warn(
+            "Failed to load file {0}".format(get_data_filename(animal, day, "task"))
+        )
         exit()
 
 
 def get_data_structure(animal, day, file_type, variable):
-    '''Returns data structures corresponding to the animal, day, file_type
+    """Returns data structures corresponding to the animal, day, file_type
     for all epochs
 
     Parameters
@@ -100,20 +101,20 @@ def get_data_structure(animal, day, file_type, variable):
     variable : list, shape (n_epochs,)
         Elements of list are data structures corresponding to variable
 
-    '''
+    """
     try:
         file = loadmat(get_data_filename(animal, day, file_type))
         n_epochs = file[variable][0, -1].size
-        return [file[variable][0, -1][0, ind]
-                for ind in np.arange(n_epochs)]
+        return [file[variable][0, -1][0, ind] for ind in np.arange(n_epochs)]
     except (IOError, TypeError):
-        logger.warn('Failed to load file: {0}'.format(
-            get_data_filename(animal, day, file_type)))
+        logger.warn(
+            "Failed to load file: {0}".format(get_data_filename(animal, day, file_type))
+        )
         return None
 
 
 def reconstruct_time(start_time, n_samples, sampling_frequency):
-    '''Reconstructs the recording time
+    """Reconstructs the recording time
 
     Parameters
     ----------
@@ -128,18 +129,21 @@ def reconstruct_time(start_time, n_samples, sampling_frequency):
     -------
     time : pandas Index
 
-    '''
+    """
     return pd.timedelta_range(
-        start=pd.Timedelta(start_time, unit='s'),
-        end=pd.Timedelta(start_time + (n_samples - 1) / sampling_frequency,
-                         unit='s'),
-        periods=n_samples, name='time')
+        start=pd.Timedelta(start_time, unit="s"),
+        end=pd.Timedelta(start_time + (n_samples - 1) / sampling_frequency, unit="s"),
+        periods=n_samples,
+        name="time",
+    )
 
 
 def _convert_to_dict(struct_array):
     try:
-        return {name: struct_array[name].item().item()
-                for name in struct_array.dtype.names
-                if struct_array[name].item().size == 1}
+        return {
+            name: struct_array[name].item().item()
+            for name in struct_array.dtype.names
+            if struct_array[name].item().size == 1
+        }
     except TypeError:
         return {}

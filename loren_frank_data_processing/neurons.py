@@ -1,6 +1,6 @@
-'''Loads general information about each spike-sorted neuron, spike times, or
+"""Loads general information about each spike-sorted neuron, spike times, or
 spike indicators.
-'''
+"""
 
 from os.path import join
 
@@ -13,7 +13,7 @@ from .tetrodes import get_trial_time
 
 
 def make_neuron_dataframe(animals, exclude_animals=None):
-    '''Information about all recorded neurons such as brain area.
+    """Information about all recorded neurons such as brain area.
 
     The index of the dataframe corresponds to the unique key for that neuron
     and can be used to load spiking information.
@@ -30,25 +30,29 @@ def make_neuron_dataframe(animals, exclude_animals=None):
     -------
     neuron_information : pandas.DataFrame
 
-    '''
+    """
     if exclude_animals is None:
         exclude_animals = []
-    neuron_file_names = [(get_neuron_info_path(animals[animal]), animal)
-                         for animal in animals
-                         if animal not in exclude_animals]
-    neuron_data = [(loadmat(file_name[0]), file_name[1])
-                   for file_name in neuron_file_names]
-    return pd.concat([
-        convert_neuron_epoch_to_dataframe(
-            epoch, animal, day_ind + 1, epoch_ind + 1)
-        for cellfile, animal in neuron_data
-        for day_ind, day in enumerate(cellfile['cellinfo'].T)
-        for epoch_ind, epoch in enumerate(day[0].T)
-    ]).sort_index()
+    neuron_file_names = [
+        (get_neuron_info_path(animals[animal]), animal)
+        for animal in animals
+        if animal not in exclude_animals
+    ]
+    neuron_data = [
+        (loadmat(file_name[0]), file_name[1]) for file_name in neuron_file_names
+    ]
+    return pd.concat(
+        [
+            convert_neuron_epoch_to_dataframe(epoch, animal, day_ind + 1, epoch_ind + 1)
+            for cellfile, animal in neuron_data
+            for day_ind, day in enumerate(cellfile["cellinfo"].T)
+            for epoch_ind, epoch in enumerate(day[0].T)
+        ]
+    ).sort_index()
 
 
 def get_spikes_dataframe(neuron_key, animals):
-    '''Spike times for a particular neuron.
+    """Spike times for a particular neuron.
 
     Parameters
     ----------
@@ -63,29 +67,32 @@ def get_spikes_dataframe(neuron_key, animals):
     Returns
     -------
     spikes_dataframe : pandas.DataFrame
-    '''
+    """
     animal, day, epoch, tetrode_number, neuron_number = neuron_key
     try:
-        neuron_file = loadmat(
-            get_data_filename(animals[animal], day, 'spikes'))
+        neuron_file = loadmat(get_data_filename(animals[animal], day, "spikes"))
     except (FileNotFoundError, TypeError):
-        logger.warning('Failed to load file: {0}'.format(
-            get_data_filename(animals[animal], day, 'spikes')))
+        logger.warning(
+            "Failed to load file: {0}".format(
+                get_data_filename(animals[animal], day, "spikes")
+            )
+        )
     try:
-        spike_time = neuron_file['spikes'][0, -1][0, epoch - 1][
-            0, tetrode_number - 1][0, neuron_number - 1][0]['data'][0][
-            :, 0]
-        spike_time = pd.TimedeltaIndex(spike_time, unit='s', name='time')
+        spike_time = neuron_file["spikes"][0, -1][0, epoch - 1][0, tetrode_number - 1][
+            0, neuron_number - 1
+        ][0]["data"][0][:, 0]
+        spike_time = pd.TimedeltaIndex(spike_time, unit="s", name="time")
     except IndexError:
         spike_time = []
     return pd.Series(
-        np.ones_like(spike_time, dtype=int), index=spike_time,
-        name='{0}_{1:02d}_{2:02}_{3:03}_{4:03}'.format(*neuron_key))
+        np.ones_like(spike_time, dtype=int),
+        index=spike_time,
+        name="{0}_{1:02d}_{2:02}_{3:03}_{4:03}".format(*neuron_key),
+    )
 
 
-def get_spike_indicator_dataframe(neuron_key, animals,
-                                  time_function=get_trial_time):
-    '''A time series where 1 indicates a spike at that time and 0 indicates no
+def get_spike_indicator_dataframe(neuron_key, animals, time_function=get_trial_time):
+    """A time series where 1 indicates a spike at that time and 0 indicates no
     spike at that time.
 
     Parameters
@@ -105,98 +112,121 @@ def get_spike_indicator_dataframe(neuron_key, animals,
     Returns
     ---
 
-    '''
+    """
     time = time_function(neuron_key[:3], animals)
     time_in_seconds = time.total_seconds()
 
     spikes_df = get_spikes_dataframe(neuron_key, animals)
     spike_times = spikes_df.index.total_seconds()
     is_in_time = (spike_times >= time_in_seconds[0]) & (
-        spike_times < time_in_seconds[-1])
-    time_index = np.digitize(spike_times[is_in_time],
-                             time_in_seconds[1:-1])
-    return (spikes_df.groupby(time[time_index].to_pytimedelta()).sum()
-            .reindex(index=time, fill_value=0))
+        spike_times < time_in_seconds[-1]
+    )
+    time_index = np.digitize(spike_times[is_in_time], time_in_seconds[1:-1])
+    return (
+        spikes_df.groupby(time[time_index].to_pytimedelta())
+        .sum()
+        .reindex(index=time, fill_value=0)
+    )
 
 
-def get_all_spike_indicators(neuron_keys, animals,
-                             time_function=get_trial_time):
+def get_all_spike_indicators(neuron_keys, animals, time_function=get_trial_time):
     time = time_function(neuron_keys[0][:3], animals)
     time_in_seconds = time.total_seconds()
 
     animal, day, _, _, _ = neuron_keys[0]
     try:
-        neuron_file = loadmat(
-            get_data_filename(animals[animal], day, 'spikes'))
+        neuron_file = loadmat(get_data_filename(animals[animal], day, "spikes"))
     except (FileNotFoundError, TypeError):
-        logger.warning('Failed to load file: {0}'.format(
-            get_data_filename(animals[animal], day, 'spikes')))
+        logger.warning(
+            "Failed to load file: {0}".format(
+                get_data_filename(animals[animal], day, "spikes")
+            )
+        )
 
     neuron_names = []
     bin_counts = []
     for neuron_key in neuron_keys:
         animal, day, epoch, tetrode_number, neuron_number = neuron_key
         neuron_names.append(
-            f'{animal}_{day:02d}_{epoch:02}_{tetrode_number:03}_{neuron_number:03}')
+            f"{animal}_{day:02d}_{epoch:02}_{tetrode_number:03}_{neuron_number:03}"
+        )
         try:
-            spike_times = neuron_file['spikes'][0, -1][0, epoch - 1][
-                0, tetrode_number - 1][0, neuron_number - 1][0]['data'][0][
-                :, 0]
-            is_in_time = ((spike_times >= time_in_seconds[0]) &
-                          (spike_times < time_in_seconds[-1]))
+            spike_times = neuron_file["spikes"][0, -1][0, epoch - 1][
+                0, tetrode_number - 1
+            ][0, neuron_number - 1][0]["data"][0][:, 0]
+            is_in_time = (spike_times >= time_in_seconds[0]) & (
+                spike_times < time_in_seconds[-1]
+            )
             bin_counts.append(
                 np.bincount(
-                    np.digitize(spike_times[is_in_time],
-                                time_in_seconds[1:-1]),
-                    minlength=time.shape[0]))
+                    np.digitize(spike_times[is_in_time], time_in_seconds[1:-1]),
+                    minlength=time.shape[0],
+                )
+            )
         except IndexError:
             bin_counts.append(np.zeros_like(time, dtype=np.float64))
 
-    return pd.DataFrame(np.stack(bin_counts, axis=1), columns=neuron_names,
-                        index=time)
+    return pd.DataFrame(np.stack(bin_counts, axis=1), columns=neuron_names, index=time)
 
 
-def convert_neuron_epoch_to_dataframe(tetrodes_in_epoch, animal, day,
-                                      epoch):
-    '''
+def convert_neuron_epoch_to_dataframe(tetrodes_in_epoch, animal, day, epoch):
+    """
     Given an neuron data structure, return a cleaned up DataFrame
-    '''
-    DROP_COLUMNS = ['ripmodtag', 'thetamodtag', 'runripmodtag',
-                    'postsleepripmodtag', 'presleepripmodtag',
-                    'runthetamodtag', 'ripmodtag2', 'runripmodtag2',
-                    'postsleepripmodtag2', 'presleepripmodtag2',
-                    'ripmodtype', 'runripmodtype', 'postsleepripmodtype',
-                    'presleepripmodtype', 'FStag', 'ripmodtag3',
-                    'runripmodtag3', 'ripmodtype3', 'runripmodtype3',
-                    'tag', 'typetag', 'runripmodtype2',
-                    'tag2', 'ripmodtype2', 'descrip']
+    """
+    DROP_COLUMNS = [
+        "ripmodtag",
+        "thetamodtag",
+        "runripmodtag",
+        "postsleepripmodtag",
+        "presleepripmodtag",
+        "runthetamodtag",
+        "ripmodtag2",
+        "runripmodtag2",
+        "postsleepripmodtag2",
+        "presleepripmodtag2",
+        "ripmodtype",
+        "runripmodtype",
+        "postsleepripmodtype",
+        "presleepripmodtype",
+        "FStag",
+        "ripmodtag3",
+        "runripmodtag3",
+        "ripmodtype3",
+        "runripmodtype3",
+        "tag",
+        "typetag",
+        "runripmodtype2",
+        "tag2",
+        "ripmodtype2",
+        "descrip",
+    ]
 
-    NEURON_INDEX = ['animal', 'day', 'epoch',
-                    'tetrode_number', 'neuron_number']
+    NEURON_INDEX = ["animal", "day", "epoch", "tetrode_number", "neuron_number"]
 
-    neuron_dict_list = [_add_to_dict(
-        _convert_to_dict(neuron), tetrode_ind, neuron_ind)
-        for tetrode_ind, tetrode in enumerate(
-        tetrodes_in_epoch[0][0])
+    neuron_dict_list = [
+        _add_to_dict(_convert_to_dict(neuron), tetrode_ind, neuron_ind)
+        for tetrode_ind, tetrode in enumerate(tetrodes_in_epoch[0][0])
         for neuron_ind, neuron in enumerate(tetrode[0])
         if neuron.size > 0
     ]
     try:
-        return (pd.DataFrame(neuron_dict_list)
-                  .drop(DROP_COLUMNS, axis=1, errors='ignore')
-                  .assign(animal=animal)
-                  .assign(day=day)
-                  .assign(epoch=epoch)
-                  .assign(neuron_id=_get_neuron_id)
-                # set index to identify rows
-                  .set_index(NEURON_INDEX)
-                  .sort_index())
+        return (
+            pd.DataFrame(neuron_dict_list)
+            .drop(DROP_COLUMNS, axis=1, errors="ignore")
+            .assign(animal=animal)
+            .assign(day=day)
+            .assign(epoch=epoch)
+            .assign(neuron_id=_get_neuron_id)
+            # set index to identify rows
+            .set_index(NEURON_INDEX)
+            .sort_index()
+        )
     except AttributeError:
-        logger.debug(f'Neuron info {animal}, {day}, {epoch} not processed')
+        logger.debug(f"Neuron info {animal}, {day}, {epoch} not processed")
 
 
 def get_neuron_info_path(animal):
-    '''Returns the path to the neuron info matlab file
+    """Returns the path to the neuron info matlab file
 
     Parameters
     ----------
@@ -208,21 +238,27 @@ def get_neuron_info_path(animal):
     -------
     path : str
 
-    '''
-    filename = '{animal.short_name}cellinfo.mat'.format(animal=animal)
+    """
+    filename = "{animal.short_name}cellinfo.mat".format(animal=animal)
     return join(animal.directory, filename)
 
 
 def _get_neuron_id(dataframe):
-    '''Unique identifier string for a neuron'''
-    return (dataframe.animal + '_' +
-            dataframe.day.map('{:02d}'.format) + '_' +
-            dataframe.epoch.map('{:02}'.format) + '_' +
-            dataframe.tetrode_number.map('{:03}'.format) + '_' +
-            dataframe.neuron_number.map('{:03}'.format))
+    """Unique identifier string for a neuron"""
+    return (
+        dataframe.animal
+        + "_"
+        + dataframe.day.map("{:02d}".format)
+        + "_"
+        + dataframe.epoch.map("{:02}".format)
+        + "_"
+        + dataframe.tetrode_number.map("{:03}".format)
+        + "_"
+        + dataframe.neuron_number.map("{:03}".format)
+    )
 
 
 def _add_to_dict(dictionary, tetrode_ind, neuron_ind):
-    dictionary['tetrode_number'] = tetrode_ind + 1
-    dictionary['neuron_number'] = neuron_ind + 1
+    dictionary["tetrode_number"] = tetrode_ind + 1
+    dictionary["neuron_number"] = neuron_ind + 1
     return dictionary

@@ -5,18 +5,14 @@ from scipy.ndimage.measurements import label
 from .core import logger
 from .DIO import get_DIO, get_DIO_indicator
 
-_WELL_NAMES = {
-    1: 'Center',
-    2: 'Left',
-    3: 'Right'
-}
+_WELL_NAMES = {1: "Center", 2: "Left", 3: "Right"}
 
-_REWARD_DIOS = ['Dout7', 'Dout8', 'Dout9']
-_DIO_WELL_ORDER = ['Din2', 'Din1', 'Din3']
+_REWARD_DIOS = ["Dout7", "Dout8", "Dout9"]
+_DIO_WELL_ORDER = ["Din2", "Din1", "Din3"]
 
 
 def paired_distances(x, y):
-    '''Euclidean distance between x and y at each time point.
+    """Euclidean distance between x and y at each time point.
 
     Parameters
     ----------
@@ -26,7 +22,7 @@ def paired_distances(x, y):
     -------
     distance : ndarray, shape (n_time,)
 
-    '''
+    """
     x, y = np.array(x), np.array(y)
     x = np.atleast_2d(x).T if x.ndim < 2 else x
     y = np.atleast_2d(y).T if y.ndim < 2 else y
@@ -34,7 +30,7 @@ def paired_distances(x, y):
 
 
 def enter_exit_target(position, target, max_distance=1):
-    '''Marks when a position has reached a target ("enter")
+    """Marks when a position has reached a target ("enter")
     and when it has left a target ("exit").
 
     The position is considered to have reached a target when it is less than
@@ -59,7 +55,7 @@ def enter_exit_target(position, target, max_distance=1):
     enter_exit : ndarray, shape (n_time,)
     at_target : ndarray, shape (n_time,)
 
-    '''
+    """
     distance_from_target = paired_distances(position, target)
     at_target = distance_from_target < max_distance
     enter_exit = np.r_[0, np.diff(at_target.astype(float))]
@@ -73,7 +69,7 @@ def enter_exit_target_dio(dio_indicator):
 
 
 def shift_well_enters(enter_exit):
-    '''Shifts the enter times back one time point.'''
+    """Shifts the enter times back one time point."""
     shifted_enter_exit = enter_exit.copy()
     old_ind = np.where(enter_exit > 0)[0]  # positive entries are well-entries
     new_ind = old_ind - 1
@@ -82,9 +78,10 @@ def shift_well_enters(enter_exit):
     return shifted_enter_exit
 
 
-def segment_path(time, position, well_locations, epoch_key, animals,
-                 max_distance_from_well=10):
-    '''Label traversals between each well location.
+def segment_path(
+    time, position, well_locations, epoch_key, animals, max_distance_from_well=10
+):
+    """Label traversals between each well location.
 
     Parameters
     ----------
@@ -100,22 +97,29 @@ def segment_path(time, position, well_locations, epoch_key, animals,
     segments_df : pandas DataFrame, shape (n_segments, 6)
     labeled_segments : pandas DataFrame, shape (n_time,)
 
-    '''
+    """
     try:
+
         def time_func(*args, **kwargs):
             return time
+
         dio_indicator = get_DIO_indicator(epoch_key, animals, time_func)
         well_enter_exit, at_target = np.stack(
-            [enter_exit_target_dio(
-                dio_indicator.loc[:, dio_name].values)
-             for dio_name in _DIO_WELL_ORDER], axis=1)
+            [
+                enter_exit_target_dio(dio_indicator.loc[:, dio_name].values)
+                for dio_name in _DIO_WELL_ORDER
+            ],
+            axis=1,
+        )
     except (FileNotFoundError, TypeError):
-        logger.warn(
-            'No DIO file found, using distance from well to segment trials')
+        logger.warn("No DIO file found, using distance from well to segment trials")
         well_enter_exit, at_target = np.stack(
-            [enter_exit_target(position, np.atleast_2d(well),
-                               max_distance_from_well)
-             for well in well_locations], axis=1)
+            [
+                enter_exit_target(position, np.atleast_2d(well), max_distance_from_well)
+                for well in well_locations
+            ],
+            axis=1,
+        )
     n_wells = len(well_locations)
     well_labels = np.arange(n_wells) + 1
     well_enter_exit = np.sum(well_enter_exit.T * well_labels, axis=1)
@@ -143,22 +147,28 @@ def segment_path(time, position, well_locations, epoch_key, animals,
         p = position[is_seg]
         distance_traveled.append(np.sum(paired_distances(p[1:], p[:-1])))
 
-    data = [('start_time', start_time), ('end_time', end_time),
-            ('duration', duration), ('from_well', from_well),
-            ('to_well', to_well),
-            ('distance_traveled', distance_traveled)]
-    index = pd.Index(segment_labels, name='segment')
-    return (pd.DataFrame.from_dict(dict(data)).set_index(index),
-            pd.DataFrame(dict(labeled_segments=labeled_segments), index=time))
+    data = [
+        ("start_time", start_time),
+        ("end_time", end_time),
+        ("duration", duration),
+        ("from_well", from_well),
+        ("to_well", to_well),
+        ("distance_traveled", distance_traveled),
+    ]
+    index = pd.Index(segment_labels, name="segment")
+    return (
+        pd.DataFrame.from_dict(dict(data)).set_index(index),
+        pd.DataFrame(dict(labeled_segments=labeled_segments), index=time),
+    )
 
 
 def find_last_non_center_well(segments_df, segment_ind):
     last_wells = segments_df.iloc[:segment_ind].to_well
     try:
-        return last_wells[last_wells != 'Center'].iloc[-1]
+        return last_wells[last_wells != "Center"].iloc[-1]
     except IndexError:
         # There are no non-center wells. Just return current well.
-        return ''
+        return ""
 
 
 def get_correct_inbound_outbound(segments_df):
@@ -169,43 +179,42 @@ def get_correct_inbound_outbound(segments_df):
 
     for segment_ind in np.arange(n_segments):
         cur_segment = segments_df.iloc[segment_ind]
-        if cur_segment.from_well == 'Center':
-            task[segment_ind] = 'Outbound'
-            last_non_center_well = find_last_non_center_well(
-                segments_df, segment_ind)
-            is_correct[segment_ind] = (
-                cur_segment.to_well !=
-                last_non_center_well) & (
-                cur_segment.to_well != 'Center'
+        if cur_segment.from_well == "Center":
+            task[segment_ind] = "Outbound"
+            last_non_center_well = find_last_non_center_well(segments_df, segment_ind)
+            is_correct[segment_ind] = (cur_segment.to_well != last_non_center_well) & (
+                cur_segment.to_well != "Center"
             )
-            if (last_non_center_well != '') | ~is_correct[segment_ind]:
+            if (last_non_center_well != "") | ~is_correct[segment_ind]:
                 turn[segment_ind] = last_non_center_well
             else:
-                is_left_turn = (((cur_segment.from_well == 'Left')
-                                 & (cur_segment.to_well == 'Center')) |
-                                ((cur_segment.from_well == 'Center') &
-                                 (cur_segment.to_well == 'Right')))
+                is_left_turn = (
+                    (cur_segment.from_well == "Left")
+                    & (cur_segment.to_well == "Center")
+                ) | (
+                    (cur_segment.from_well == "Center")
+                    & (cur_segment.to_well == "Right")
+                )
 
-                turn[segment_ind] = 'Left' if is_left_turn else 'Right'
+                turn[segment_ind] = "Left" if is_left_turn else "Right"
         else:
-            task[segment_ind] = 'Inbound'
-            is_correct[segment_ind] = (
-                segments_df.iloc[segment_ind].to_well == 'Center')
+            task[segment_ind] = "Inbound"
+            is_correct[segment_ind] = segments_df.iloc[segment_ind].to_well == "Center"
             turn[segment_ind] = cur_segment.from_well
 
-    segments_df['task'] = task
-    segments_df['is_correct'] = is_correct
-    segments_df['turn'] = turn
+    segments_df["task"] = task
+    segments_df["is_correct"] = is_correct
+    segments_df["turn"] = turn
 
     return segments_df
 
 
-def get_correct_inbound_outbound_dio(segments_df, epoch_key, animals,
-                                     reward_dio_names=_REWARD_DIOS):
+def get_correct_inbound_outbound_dio(
+    segments_df, epoch_key, animals, reward_dio_names=_REWARD_DIOS
+):
     dio = get_DIO(epoch_key, animals)
     dio_is_correct = dio.loc[:, reward_dio_names].sum(axis=1)
-    correct_times = (dio_is_correct.loc[dio_is_correct == 1].index
-                     .total_seconds().values)
+    correct_times = dio_is_correct.loc[dio_is_correct == 1].index.total_seconds().values
     end_times = segments_df.end_time.dt.total_seconds().values
     correct_ind = np.searchsorted(end_times, correct_times) - 1
 
@@ -214,38 +223,40 @@ def get_correct_inbound_outbound_dio(segments_df, epoch_key, animals,
     turn = np.empty((n_segments,), dtype=object)
 
     is_correct[correct_ind] = True
-    segments_df['is_correct'] = is_correct
+    segments_df["is_correct"] = is_correct
 
     task = np.empty((n_segments,), dtype=object)
     for segment_ind in np.arange(n_segments):
         cur_segment = segments_df.iloc[segment_ind]
-        if segments_df.iloc[segment_ind].from_well == 'Center':
-            task[segment_ind] = 'Outbound'
-            last_non_center_well = find_last_non_center_well(
-                segments_df, segment_ind)
-            if (last_non_center_well != '') | ~is_correct[segment_ind]:
+        if segments_df.iloc[segment_ind].from_well == "Center":
+            task[segment_ind] = "Outbound"
+            last_non_center_well = find_last_non_center_well(segments_df, segment_ind)
+            if (last_non_center_well != "") | ~is_correct[segment_ind]:
                 turn[segment_ind] = last_non_center_well
             else:
-                is_left_turn = (((cur_segment.from_well == 'Left')
-                                 & (cur_segment.to_well == 'Center')) |
-                                ((cur_segment.from_well == 'Center') &
-                                 (cur_segment.to_well == 'Right')))
+                is_left_turn = (
+                    (cur_segment.from_well == "Left")
+                    & (cur_segment.to_well == "Center")
+                ) | (
+                    (cur_segment.from_well == "Center")
+                    & (cur_segment.to_well == "Right")
+                )
 
-                turn[segment_ind] = 'Left' if is_left_turn else 'Right'
+                turn[segment_ind] = "Left" if is_left_turn else "Right"
         else:
-            task[segment_ind] = 'Inbound'
+            task[segment_ind] = "Inbound"
             turn[segment_ind] = cur_segment.from_well
 
-    segments_df['task'] = task
-    segments_df['turn'] = turn
+    segments_df["task"] = task
+    segments_df["turn"] = turn
 
     return segments_df
 
 
 def score_inbound_outbound(
-        segments_df, epoch_key, animals, min_distance_traveled=50,
-        well_names=_WELL_NAMES):
-    '''In the alternating arm task, determines whether the trial should be
+    segments_df, epoch_key, animals, min_distance_traveled=50, well_names=_WELL_NAMES
+):
+    """In the alternating arm task, determines whether the trial should be
     inbound (running to the center arm) or outbound (running to the opposite
     outer arm as before) and if the trial was performed correctly.
 
@@ -263,18 +274,20 @@ def score_inbound_outbound(
         Same as the input dataframe but with the wells labeled
         (left, right, center) and columns for `task` (inbound/outbound) and
         `is_correct` (True/False).
-    '''
-    segments_df = (segments_df.copy()
-                   .loc[segments_df.distance_traveled > min_distance_traveled]
-                   .dropna())
+    """
+    segments_df = (
+        segments_df.copy()
+        .loc[segments_df.distance_traveled > min_distance_traveled]
+        .dropna()
+    )
     segments_df = segments_df.assign(
         to_well=lambda df: df.to_well.map(well_names),
-        from_well=lambda df: df.from_well.map(well_names))
+        from_well=lambda df: df.from_well.map(well_names),
+    )
     try:
-        return get_correct_inbound_outbound_dio(
-            segments_df, epoch_key, animals)
+        return get_correct_inbound_outbound_dio(segments_df, epoch_key, animals)
     except (FileNotFoundError, TypeError):
         logger.warn(
-            'No DIO file found, inferring correct inbound/outbound from task '
-            'rules')
+            "No DIO file found, inferring correct inbound/outbound from task " "rules"
+        )
         return get_correct_inbound_outbound(segments_df)

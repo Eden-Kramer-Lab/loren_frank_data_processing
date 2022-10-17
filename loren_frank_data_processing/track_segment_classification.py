@@ -5,11 +5,11 @@ import networkx as nx
 import numpy as np
 import scipy.stats
 
-np.warnings.filterwarnings('ignore')
+np.warnings.filterwarnings("ignore")
 
 
 def get_track_segments_from_graph(track_graph):
-    '''
+    """
 
     Parameters
     ----------
@@ -19,31 +19,34 @@ def get_track_segments_from_graph(track_graph):
     -------
     track_segments : ndarray, shape (n_segments, n_nodes, n_space)
 
-    '''
-    node_positions = nx.get_node_attributes(track_graph, 'pos')
-    return np.asarray([(node_positions[node1], node_positions[node2])
-                       for node1, node2 in track_graph.edges()])
+    """
+    node_positions = nx.get_node_attributes(track_graph, "pos")
+    return np.asarray(
+        [
+            (node_positions[node1], node_positions[node2])
+            for node1, node2 in track_graph.edges()
+        ]
+    )
 
 
 def plot_track(track_graph, ax=None, draw_edge_labels=False, **kwds):
-    '''
+    """
 
     Parameters
     ----------
     track_graph : networkx Graph
 
-    '''
-    node_position = nx.get_node_attributes(track_graph, 'pos')
+    """
+    node_position = nx.get_node_attributes(track_graph, "pos")
     nx.draw_networkx(track_graph, node_position, ax, **kwds)
 
     if draw_edge_labels:
         edge_ids = {edge: ind for ind, edge in enumerate(track_graph.edges)}
-        nx.draw_networkx_edge_labels(track_graph, node_position,
-                                     edge_labels=edge_ids)
+        nx.draw_networkx_edge_labels(track_graph, node_position, edge_labels=edge_ids)
 
 
 def project_points_to_segment(track_segments, position):
-    '''Finds the closet point on a track segment in terms of Euclidean distance
+    """Finds the closet point on a track segment in terms of Euclidean distance
 
     Parameters
     ----------
@@ -54,29 +57,33 @@ def project_points_to_segment(track_segments, position):
     -------
     projected_positions : ndarray, shape (n_time, n_segments, n_space)
 
-    '''
+    """
     segment_diff = np.diff(track_segments, axis=1).squeeze(axis=1)
     sum_squares = np.sum(segment_diff ** 2, axis=1)
     node1 = track_segments[:, 0, :]
-    nx = (np.sum(segment_diff *
-                 (position[:, np.newaxis, :] - node1), axis=2) /
-          sum_squares)
+    nx = (
+        np.sum(segment_diff * (position[:, np.newaxis, :] - node1), axis=2)
+        / sum_squares
+    )
     nx[np.where(nx < 0)] = 0.0
     nx[np.where(nx > 1)] = 1.0
     return node1[np.newaxis, ...] + (
-        nx[:, :, np.newaxis] * segment_diff[np.newaxis, ...])
+        nx[:, :, np.newaxis] * segment_diff[np.newaxis, ...]
+    )
 
 
 def find_projected_point_distance(track_segments, position):
-    '''
-    '''
+    """
+    """
     return np.linalg.norm(
-        position[:, np.newaxis, :] -
-        project_points_to_segment(track_segments, position), axis=2)
+        position[:, np.newaxis, :]
+        - project_points_to_segment(track_segments, position),
+        axis=2,
+    )
 
 
 def find_nearest_segment(track_segments, position):
-    '''Returns the track segment that is closest to the position
+    """Returns the track segment that is closest to the position
     at each time point.
 
     Parameters
@@ -88,13 +95,13 @@ def find_nearest_segment(track_segments, position):
     -------
     segment_id : ndarray, shape (n_time,)
 
-    '''
+    """
     distance = find_projected_point_distance(track_segments, position)
     return np.argmin(distance, axis=1)
 
 
 def euclidean_distance_change(position):
-    '''Distance between position at successive time points
+    """Distance between position at successive time points
 
     Parameters
     ----------
@@ -104,13 +111,13 @@ def euclidean_distance_change(position):
     -------
     distance : ndarray, shape (n_time,)
 
-    '''
+    """
     distance = np.linalg.norm(position[1:] - position[:-1], axis=1)
     return np.concatenate(([np.nan], distance))
 
 
 def route_distance(candidates_t_1, candidates_t, track_graph):
-    '''
+    """
 
     Parameters
     ----------
@@ -122,7 +129,7 @@ def route_distance(candidates_t_1, candidates_t, track_graph):
     -------
     route_distance : ndarray, shape (n_segments, n_segments)
 
-    '''
+    """
     # TODO: speedup function. This takes the most time
     n_segments = len(track_graph.edges)
     if np.any(np.isnan(candidates_t) | np.isnan(candidates_t)):
@@ -132,30 +139,33 @@ def route_distance(candidates_t_1, candidates_t, track_graph):
     n_original_nodes = len(track_graph.nodes)
     # insert virtual node
     for edge_number, (position_t, position_t_1, (node1, node2)) in enumerate(
-            zip(candidates_t, candidates_t_1, edges)):
-        node_name_t, node_name_t_1 = f't_0_{edge_number}', f't_1_{edge_number}'
+        zip(candidates_t, candidates_t_1, edges)
+    ):
+        node_name_t, node_name_t_1 = f"t_0_{edge_number}", f"t_1_{edge_number}"
         node_names.append(node_name_t)
         node_names.append(node_name_t_1)
         nx.add_path(track_graph, [node1, node_name_t, node2])
         nx.add_path(track_graph, [node1, node_name_t_1, node2])
         nx.add_path(track_graph, [node_name_t, node_name_t_1])
-        track_graph.nodes[node_name_t]['pos'] = tuple(position_t)
-        track_graph.nodes[node_name_t_1]['pos'] = tuple(position_t_1)
+        track_graph.nodes[node_name_t]["pos"] = tuple(position_t)
+        track_graph.nodes[node_name_t_1]["pos"] = tuple(position_t_1)
 
     # calculate distance
     for node1, node2 in track_graph.edges:
-        x1, y1 = track_graph.nodes[node1]['pos']
-        x2, y2 = track_graph.nodes[node2]['pos']
-        track_graph.edges[(node1, node2)]['distance'] = sqrt(
-            (x2 - x1)**2 + (y2 - y1)**2)
+        x1, y1 = track_graph.nodes[node1]["pos"]
+        x2, y2 = track_graph.nodes[node2]["pos"]
+        track_graph.edges[(node1, node2)]["distance"] = sqrt(
+            (x2 - x1) ** 2 + (y2 - y1) ** 2
+        )
 
     # calculate path distance
     path_distance = scipy.sparse.csgraph.dijkstra(
-        nx.to_scipy_sparse_matrix(track_graph, weight='distance'))
+        nx.to_scipy_sparse_matrix(track_graph, weight="distance")
+    )
     n_total_nodes = len(track_graph.nodes)
     node_ind = np.arange(n_total_nodes)
     start_node_ind = node_ind[n_original_nodes::2]
-    end_node_ind = node_ind[n_original_nodes + 1::2]
+    end_node_ind = node_ind[n_original_nodes + 1 :: 2]
 
     track_graph.remove_nodes_from(node_names)
 
@@ -168,19 +178,20 @@ def batch(n_samples, batch_size=1):
 
 
 @dask.delayed
-def batch_route_distance(track_graph, projected_track_position_t,
-                         projected_track_position_t_1):
+def batch_route_distance(
+    track_graph, projected_track_position_t, projected_track_position_t_1
+):
     copy_graph = track_graph.copy()
-    distances = [route_distance(p_t, p_t_1, copy_graph)
-                 for p_t, p_t_1 in zip(projected_track_position_t,
-                                       projected_track_position_t_1)]
+    distances = [
+        route_distance(p_t, p_t_1, copy_graph)
+        for p_t, p_t_1 in zip(projected_track_position_t, projected_track_position_t_1)
+    ]
     return np.stack(distances)
 
 
 def route_distance_change(position, track_graph):
     track_segments = get_track_segments_from_graph(track_graph)
-    projected_track_position = project_points_to_segment(
-        track_segments, position)
+    projected_track_position = project_points_to_segment(track_segments, position)
     n_segments = len(track_segments)
 
     distances = [np.full((1, n_segments, n_segments), np.nan)]
@@ -191,23 +202,27 @@ def route_distance_change(position, track_graph):
     for time_ind in batch(n_time, batch_size=10_000):
         distances.append(
             batch_route_distance(
-                track_graph, projected_track_position_t[time_ind],
-                projected_track_position_t_1[time_ind]))
+                track_graph,
+                projected_track_position_t[time_ind],
+                projected_track_position_t_1[time_ind],
+            )
+        )
 
-    return np.concatenate(dask.compute(
-        *distances, scheduler='processes'), axis=0)
+    return np.concatenate(dask.compute(*distances, scheduler="processes"), axis=0)
 
 
 def calculate_position_likelihood(position, track_graph, sigma=10):
     track_segments = get_track_segments_from_graph(track_graph)
     projected_position_distance = find_projected_point_distance(
-        track_segments, position)
-    return (np.exp(-0.5 * (projected_position_distance / sigma) ** 2) /
-            (np.sqrt(2 * np.pi) * sigma))
+        track_segments, position
+    )
+    return np.exp(-0.5 * (projected_position_distance / sigma) ** 2) / (
+        np.sqrt(2 * np.pi) * sigma
+    )
 
 
 def normalize_to_probability(x, axis=-1):
-    '''Ensure the array axis sum to 1
+    """Ensure the array axis sum to 1
 
     Parameters
     ----------
@@ -217,13 +232,14 @@ def normalize_to_probability(x, axis=-1):
     -------
     normalized_x : ndarray
 
-    '''
+    """
     return x / x.sum(axis=axis, keepdims=True)
 
 
-def calculate_empirical_state_transition(position, track_graph,
-                                         scaling=1E-1, diagonal_bias=1E-1):
-    '''Calculates the state transition probabilty between track segments by
+def calculate_empirical_state_transition(
+    position, track_graph, scaling=1e-1, diagonal_bias=1e-1
+):
+    """Calculates the state transition probabilty between track segments by
     favoring route distances that are similar to euclidean distances between
     successive time points.
 
@@ -244,12 +260,14 @@ def calculate_empirical_state_transition(position, track_graph,
     International Conference on Advances in Geographic Information Systems,
     (ACM), pp. 336-343.
 
-    '''
+    """
     route_and_euclidean_distance_similarity = np.abs(
-        route_distance_change(position, track_graph) -
-        euclidean_distance_change(position)[:, np.newaxis, np.newaxis])
+        route_distance_change(position, track_graph)
+        - euclidean_distance_change(position)[:, np.newaxis, np.newaxis]
+    )
     exponential_pdf = scipy.stats.expon.pdf(
-        route_and_euclidean_distance_similarity, scale=scaling)
+        route_and_euclidean_distance_similarity, scale=scaling
+    )
     exponential_pdf = normalize_to_probability(exponential_pdf, axis=2)
 
     n_states = route_and_euclidean_distance_similarity.shape[1]
@@ -259,7 +277,7 @@ def calculate_empirical_state_transition(position, track_graph,
 
 
 def viterbi(initial_conditions, state_transition, likelihood):
-    '''Find the most likely sequence of paths using the Viterbi algorithm.
+    """Find the most likely sequence of paths using the Viterbi algorithm.
 
     Note that the state_transition matrix is time-dependent. NaNs are removed
     and placed back in at the end.
@@ -274,9 +292,10 @@ def viterbi(initial_conditions, state_transition, likelihood):
     -------
     state_id : ndarray, shape (n_time,)
 
-    '''
-    is_bad = (np.any(np.isnan(likelihood), axis=1) |
-              np.any(np.isinf(np.log(likelihood)), axis=1))
+    """
+    is_bad = np.any(np.isnan(likelihood), axis=1) | np.any(
+        np.isinf(np.log(likelihood)), axis=1
+    )
     log_likelihood = np.log(likelihood.copy()[~is_bad])
     state_transition = np.log(state_transition.copy()[~is_bad])
 
@@ -291,8 +310,10 @@ def viterbi(initial_conditions, state_transition, likelihood):
     for time_ind in range(1, n_time):
         prior = posterior[time_ind - 1] + state_transition[time_ind]
         max_state_ind[time_ind] = prior.argmax(axis=1)
-        posterior[time_ind] = prior[np.arange(
-            n_states), max_state_ind[time_ind]] + log_likelihood[time_ind]
+        posterior[time_ind] = (
+            prior[np.arange(n_states), max_state_ind[time_ind]]
+            + log_likelihood[time_ind]
+        )
 
     # termination
     most_probable_state_ind = np.zeros((n_time,), dtype=np.int)
@@ -301,17 +322,22 @@ def viterbi(initial_conditions, state_transition, likelihood):
     # path back-tracking
     for time_ind in reversed(range(n_time - 1)):
         most_probable_state_ind[time_ind] = max_state_ind[
-            time_ind + 1, most_probable_state_ind[time_ind + 1]]
+            time_ind + 1, most_probable_state_ind[time_ind + 1]
+        ]
 
     most_probable_state_ind_with_nan = np.full((is_bad.size,), np.nan)
     most_probable_state_ind_with_nan[~is_bad] = most_probable_state_ind
     return most_probable_state_ind_with_nan
 
 
-def classify_track_segments(track_graph, position, sensor_std_dev=10,
-                            route_euclidean_distance_scaling=1E-1,
-                            diagonal_bias=1E-1):
-    '''Find the most likely track segment for a given position.
+def classify_track_segments(
+    track_graph,
+    position,
+    sensor_std_dev=10,
+    route_euclidean_distance_scaling=1e-1,
+    diagonal_bias=1e-1,
+):
+    """Find the most likely track segment for a given position.
 
     Tries to make sure the euclidean distance between successive time points
     is similar to the route distance along the graph.
@@ -340,46 +366,49 @@ def classify_track_segments(track_graph, position, sensor_std_dev=10,
     International Conference on Advances in Geographic Information Systems,
     (ACM), pp. 336-343.
 
-    '''
+    """
     n_segments = len(track_graph.edges)
     initial_conditions = np.ones((n_segments,))
     state_transition = calculate_empirical_state_transition(
-        position, track_graph, scaling=route_euclidean_distance_scaling,
-        diagonal_bias=diagonal_bias)
+        position,
+        track_graph,
+        scaling=route_euclidean_distance_scaling,
+        diagonal_bias=diagonal_bias,
+    )
     likelihood = calculate_position_likelihood(
-        position, track_graph, sigma=sensor_std_dev)
+        position, track_graph, sigma=sensor_std_dev
+    )
 
     return viterbi(initial_conditions, state_transition, likelihood)
 
 
-def batch_linear_distance(track_graph, projected_track_positions, edge_ids,
-                          well_id):
+def batch_linear_distance(track_graph, projected_track_positions, edge_ids, well_id):
 
     copy_graph = track_graph.copy()
     linear_distance = []
 
-    for (x3, y3), (node1, node2) in zip(
-            projected_track_positions, edge_ids):
+    for (x3, y3), (node1, node2) in zip(projected_track_positions, edge_ids):
 
-        x1, y1 = copy_graph.nodes[node1]['pos']
-        left_distance = sqrt((x3 - x1)**2 + (y3 - y1)**2)
-        nx.add_path(copy_graph, [node1, 'projected'], distance=left_distance)
+        x1, y1 = copy_graph.nodes[node1]["pos"]
+        left_distance = sqrt((x3 - x1) ** 2 + (y3 - y1) ** 2)
+        nx.add_path(copy_graph, [node1, "projected"], distance=left_distance)
 
-        x2, y2 = copy_graph.nodes[node2]['pos']
-        right_distance = sqrt((x3 - x2)**2 + (y3 - y2)**2)
-        nx.add_path(copy_graph, ['projected', node2], distance=right_distance)
+        x2, y2 = copy_graph.nodes[node2]["pos"]
+        right_distance = sqrt((x3 - x2) ** 2 + (y3 - y2) ** 2)
+        nx.add_path(copy_graph, ["projected", node2], distance=right_distance)
 
         linear_distance.append(
-            nx.shortest_path_length(copy_graph, source=well_id,
-                                    target='projected', weight='distance'))
-        copy_graph.remove_node('projected')
+            nx.shortest_path_length(
+                copy_graph, source=well_id, target="projected", weight="distance"
+            )
+        )
+        copy_graph.remove_node("projected")
 
     return linear_distance
 
 
-def calculate_linear_distance(track_graph, track_segment_id, well_id,
-                              position):
-    '''Finds the path distance along a graph relative to a node.
+def calculate_linear_distance(track_graph, track_segment_id, well_id, position):
+    """Finds the path distance along a graph relative to a node.
 
     Parameters
     ----------
@@ -395,17 +424,17 @@ def calculate_linear_distance(track_graph, track_segment_id, well_id,
     projected_track_position_x : ndarray, shape (n_time,)
     projected_track_position_y : ndarray, shape (n_time,)
 
-    '''
+    """
     is_nan = np.isnan(track_segment_id)
     track_segment_id[is_nan] = 0  # need to check
     track_segment_id = track_segment_id.astype(int)
 
     track_segments = get_track_segments_from_graph(track_graph)
-    projected_track_positions = project_points_to_segment(
-        track_segments, position)
+    projected_track_positions = project_points_to_segment(track_segments, position)
     n_time = projected_track_positions.shape[0]
-    projected_track_positions = projected_track_positions[(
-        np.arange(n_time), track_segment_id)]
+    projected_track_positions = projected_track_positions[
+        (np.arange(n_time), track_segment_id)
+    ]
     edge_ids = np.asarray(list(track_graph.edges))[track_segment_id]
 
     linear_distance = []
@@ -413,12 +442,19 @@ def calculate_linear_distance(track_graph, track_segment_id, well_id,
     for time_ind in batch(n_time, batch_size=10_000):
         linear_distance.append(
             batch_linear_distance(
-                track_graph, projected_track_positions[time_ind],
-                edge_ids[time_ind], well_id))
-    linear_distance = np.concatenate(dask.compute(
-        *linear_distance, scheduler='processes'))
+                track_graph,
+                projected_track_positions[time_ind],
+                edge_ids[time_ind],
+                well_id,
+            )
+        )
+    linear_distance = np.concatenate(
+        dask.compute(*linear_distance, scheduler="processes")
+    )
     linear_distance[is_nan] = np.nan
 
-    return (linear_distance,
-            projected_track_positions[:, 0],
-            projected_track_positions[:, 1])
+    return (
+        linear_distance,
+        projected_track_positions[:, 0],
+        projected_track_positions[:, 1],
+    )
