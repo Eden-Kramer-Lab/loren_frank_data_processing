@@ -164,7 +164,7 @@ def get_all_spike_indicators(neuron_keys, animals, time_function=get_trial_time)
                 )
             )
         except IndexError:
-            bin_counts.append(np.zeros_like(time, dtype=np.float64))
+            bin_counts.append(np.zeros_like(time, dtype=float))
 
     return pd.DataFrame(np.stack(bin_counts, axis=1), columns=neuron_names, index=time)
 

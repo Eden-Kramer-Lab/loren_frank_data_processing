@@ -86,7 +86,7 @@ def get_multiunit_dataframe2(tetrode_key, animals):
         time = pd.TimedeltaIndex(
             multiunit_data["times"][0, 0].squeeze(), unit="s", name="time"
         )
-        multiunit = multiunit_data["marks"][0, 0].astype(np.float)
+        multiunit = multiunit_data["marks"][0, 0].astype(float)
         column_names = [
             "channel_{number}_max".format(number=number + 1)
             for number in np.arange(multiunit.shape[1])

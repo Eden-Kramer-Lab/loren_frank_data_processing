@@ -5,8 +5,6 @@ import networkx as nx
 import numpy as np
 import scipy.stats
 
-np.warnings.filterwarnings("ignore")
-
 
 def get_track_segments_from_graph(track_graph):
     """
@@ -59,7 +57,7 @@ def project_points_to_segment(track_segments, position):
 
     """
     segment_diff = np.diff(track_segments, axis=1).squeeze(axis=1)
-    sum_squares = np.sum(segment_diff ** 2, axis=1)
+    sum_squares = np.sum(segment_diff**2, axis=1)
     node1 = track_segments[:, 0, :]
     nx = (
         np.sum(segment_diff * (position[:, np.newaxis, :] - node1), axis=2)
@@ -73,8 +71,7 @@ def project_points_to_segment(track_segments, position):
 
 
 def find_projected_point_distance(track_segments, position):
-    """
-    """
+    """ """
     return np.linalg.norm(
         position[:, np.newaxis, :]
         - project_points_to_segment(track_segments, position),
@@ -301,7 +298,7 @@ def viterbi(initial_conditions, state_transition, likelihood):
 
     n_time, n_states = log_likelihood.shape
     posterior = np.zeros((n_time, n_states))
-    max_state_ind = np.zeros((n_time, n_states), dtype=np.int)
+    max_state_ind = np.zeros((n_time, n_states), dtype=int)
 
     # initialization
     posterior[0] = np.log(initial_conditions) + log_likelihood[0]
@@ -316,7 +313,7 @@ def viterbi(initial_conditions, state_transition, likelihood):
         )
 
     # termination
-    most_probable_state_ind = np.zeros((n_time,), dtype=np.int)
+    most_probable_state_ind = np.zeros((n_time,), dtype=int)
     most_probable_state_ind[n_time - 1] = np.argmax(posterior[n_time - 1])
 
     # path back-tracking
@@ -383,12 +380,10 @@ def classify_track_segments(
 
 
 def batch_linear_distance(track_graph, projected_track_positions, edge_ids, well_id):
-
     copy_graph = track_graph.copy()
     linear_distance = []
 
     for (x3, y3), (node1, node2) in zip(projected_track_positions, edge_ids):
-
         x1, y1 = copy_graph.nodes[node1]["pos"]
         left_distance = sqrt((x3 - x1) ** 2 + (y3 - y1) ** 2)
         nx.add_path(copy_graph, [node1, "projected"], distance=left_distance)

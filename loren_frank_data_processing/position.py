@@ -169,7 +169,6 @@ def _get_linpos_dataframe(
 def calculate_linear_velocity(
     linear_distance, smooth_duration=0.500, sampling_frequency=29
 ):
-
     smoothed_linear_distance = gaussian_filter1d(
         linear_distance, smooth_duration * sampling_frequency
     )
@@ -184,7 +183,9 @@ def convert_linear_distance_to_linear_position(
     linear_position = linear_distance.copy()
     n_edges = len(edge_order)
     if isinstance(spacing, int) | isinstance(spacing, float):
-        spacing = [spacing,] * (n_edges - 1)
+        spacing = [
+            spacing,
+        ] * (n_edges - 1)
 
     for prev_edge, cur_edge, space in zip(edge_order[:-1], edge_order[1:], spacing):
         is_cur_edge = edge_id == cur_edge
@@ -256,7 +257,9 @@ def _calulcate_linear_position(
 
     n_edges = len(edge_order)
     if isinstance(edge_spacing, int) | isinstance(edge_spacing, float):
-        edge_spacing = [edge_spacing,] * (n_edges - 1)
+        edge_spacing = [
+            edge_spacing,
+        ] * (n_edges - 1)
 
     for start_linear_position, start_linear_distance, cur_edge in zip(
         node_linear_position[:, 0], node_linear_distance[:, 0], edge_order
@@ -417,8 +420,7 @@ def get_interpolated_position_dataframe(
 
 
 def get_well_locations(epoch_key, animals):
-    """Retrieves the 2D coordinates for each well.
-    """
+    """Retrieves the 2D coordinates for each well."""
     animal, day, epoch = epoch_key
     task_file = get_data_structure(animals[animal], day, "task", "task")
     linearcoord = task_file[epoch - 1]["linearcoord"][0, 0].squeeze(axis=0)
@@ -476,7 +478,7 @@ def make_track_graph(epoch_key, animals):
     _, unique_ind = np.unique(nodes, return_index=True, axis=0)
     nodes = nodes[np.sort(unique_ind)]
 
-    edges = np.zeros(track_segments.shape[:2], dtype=np.int)
+    edges = np.zeros(track_segments.shape[:2], dtype=int)
     for node_id, node in enumerate(nodes):
         edge_ind = np.nonzero(np.isin(track_segments, node).sum(axis=2) > 1)
         edges[edge_ind] = node_id
