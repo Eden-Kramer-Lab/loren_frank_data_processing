@@ -58,7 +58,7 @@ def _count_exposure(df):
 def compute_exposure(epoch_info):
     df = epoch_info.groupby(["animal", "environment"]).apply(_count_exposure)
     df["exposure"] = df.exposure.where(
-        ~epoch_info.type.isin(["sleep", "rest", "nan", "failed sleep"])
+        ~epoch_info.type.isin(["sleep", "rest", "nan", "failed sleep"]).to_numpy(),
     )
     return df
 
