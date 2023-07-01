@@ -56,7 +56,9 @@ def _count_exposure(df):
 
 
 def compute_exposure(epoch_info):
-    df = epoch_info.groupby(["animal", "environment"]).apply(_count_exposure)
+    df = epoch_info.groupby(["animal", "environment"], group_keys=False).apply(
+        _count_exposure
+    )
     df["exposure"] = df.exposure.where(
         ~epoch_info.type.isin(["sleep", "rest", "nan", "failed sleep"])
     )
@@ -97,6 +99,7 @@ def make_epochs_dataframe(animals):
     epoch_information : pandas.DataFrame
 
     """
-    return compute_exposure(
-        pd.concat([get_task(animal) for animal in animals.values()]).sort_index()
-    )
+    epoch_info = pd.concat(
+        [get_task(animal) for animal in animals.values()]
+    ).sort_index()
+    return compute_exposure(epoch_info)
