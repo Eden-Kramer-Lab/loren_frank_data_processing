@@ -1,6 +1,7 @@
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
+
 from loren_frank_data_processing.track_segment_classification import (
     get_track_segments_from_graph,
     plot_track,

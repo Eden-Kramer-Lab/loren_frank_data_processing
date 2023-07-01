@@ -2,8 +2,9 @@ from os.path import join
 
 import numpy as np
 import pandas as pd
-from loren_frank_data_processing.core import logger, reconstruct_time
 from scipy.io import loadmat
+
+from loren_frank_data_processing.core import logger, reconstruct_time
 
 
 def squeeze_matcell(x):

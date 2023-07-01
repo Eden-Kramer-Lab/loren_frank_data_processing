@@ -2,8 +2,7 @@ from os.path import isfile, join
 
 
 def get_analysis_file_path(processed_data_dir, animal, day, epoch):
-    """File path for analysis file.
-    """
+    """File path for analysis file."""
     filename = "{animal}_{day:02d}_{epoch:02d}.nc".format(
         animal=animal, day=day, epoch=epoch
     )
