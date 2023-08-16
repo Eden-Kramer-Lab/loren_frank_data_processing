@@ -16,7 +16,7 @@ TESTS_REQUIRE = ["pytest >= 2.7.1"]
 
 setup(
     name="loren_frank_data_processing",
-    version="1.0.3",
+    version="1.0.4",
     license="GPL-3.0",
     description=("Import data from Loren Frank lab"),
     author="Eric Denovellis",
