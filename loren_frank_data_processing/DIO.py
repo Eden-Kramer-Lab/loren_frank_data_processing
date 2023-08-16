@@ -29,7 +29,7 @@ def get_DIO(epoch_key, animals):
             try:
                 series = pd.Series(values, index=time, name=pin_id)
             except TypeError:
-                series = pd.Series(index=[time], name=pin_id)
+                series = pd.Series(index=[time], name=pin_id, dtype=float)
             pins_df.append(series)
         except IndexError:
             continue
